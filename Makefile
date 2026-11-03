@@ -45,3 +45,14 @@ clean:
 > pg_ctl -D ~/pgdata stop 2>/dev/null || true
 
 .PHONY: all dirs lex yacc r python sql pgsql clean
+
+# JSON export - make to json
+json: eal7.db
+> echo '{"kdp": "KDPMember:KL5UQ4f48673352", "code": "KL5UQ4f48673352", "BOA": "application/vnd.x-mosfetq-dos-image", "IANA": 1460172, "PORT": 8038, "FLOP_QUADRUPLE": "4+16+64=84"}' | python3 -c "import json,sqlite3,sys; con=sqlite3.connect('eal7.db'); cur=con.cursor(); cur.execute('SELECT * FROM flop_quadruple'); quad=dict(zip([d[0] for d in cur.description], cur.fetchone())); cur.execute('SELECT * FROM matrix'); mat=[dict(zip([d[0] for d in cur.description], r)) for r in cur.fetchall()]; base=json.load(sys.stdin); base.update(quad); base['matrix']=mat; print(json.dumps(base, indent=2))" > boa.json
+> cat boa.json
+
+boa: json
+
+eal7.json: eal7.db
+> sqlite3 -json eal7.db "SELECT * FROM eal7_events" > eal7.json
+> cat eal7.json

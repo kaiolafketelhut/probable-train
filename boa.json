@@ -1,0 +1,34 @@
+{
+  "kdp": "KDPMember:KL5UQ4f48673352",
+  "code": "KL5UQ4f48673352",
+  "BOA": "application/vnd.x-mosfetq-dos-image",
+  "IANA": 1460172,
+  "PORT": 8038,
+  "FLOP_QUADRUPLE": "4+16+64=84",
+  "total_events": 3,
+  "total_flops_quadruple": 84,
+  "port": 8038,
+  "boa": "application/vnd.x-mosfetq-dos-image",
+  "iana": 1460172,
+  "formula": "4+16+64=84",
+  "matrix": [
+    {
+      "page": "eal7.html",
+      "event": "page_view",
+      "count": 1,
+      "total_flops": 4
+    },
+    {
+      "page": "eal7.x",
+      "event": "ximg_view",
+      "count": 1,
+      "total_flops": 64
+    },
+    {
+      "page": "main.ximg",
+      "event": "fem_run",
+      "count": 1,
+      "total_flops": 16
+    }
+  ]
+}
