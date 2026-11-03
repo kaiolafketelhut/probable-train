@@ -1,0 +1,12 @@
+Nickname : KDPMember:KL5UQ4f48673352
+Code : KL5UQ4f48673352
+Role : Member
+Points : 1
+Page : main.ximg
+Event : ximg_view
+Flops : 64
+BOA : application/vnd.x-mosfetq-dos-image
+Port : 8038
+IANA : 1460172
+FLOP_QUADRUPLE : 4+16+64=84
+MAIN_FILES : MAIN.l, main.y, MAIN.x, MAIN.ximg, MAIN.r, MAIN.py, MAIN.sql, MAIN.pgsql
