@@ -1,0 +1,10 @@
+{
+  "kdp": "KDPMember:KL5UQ4f48673352",
+  "BOA": "application/vnd.x-mosfetq-dos-image",
+  "IANA": 1460172,
+  "PORT": 8038,
+  "FLOP_QUADRUPLE": "4+16+64=84",
+  "total_flops_quadruple": 84,
+  "matrix": [4, 64, 16]
+}
+
