@@ -1,0 +1,11 @@
+name: Build 8 MAINs
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: sudo apt-get update && sudo apt-get install -y flex bison clang sqlite3 R-base python3
+      - name: make all
+        run: make all
