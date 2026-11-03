@@ -1,0 +1,53 @@
+name: BOA Bundle 84 flops - KDP KL5UQ4f48673352 - IANA 1460172 PORT 8038
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-boa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Build all MAINs -> eal7.db -> 84 flops
+        run: |
+          make clean || true
+          make all
+          ls -lh eal7.db *.json 2>/dev/null || true
+          python3 -c "import sqlite3; conn=sqlite3.connect('eal7.db'); cur=conn.cursor(); cur.execute('SELECT total_flops FROM eal7'); flops=cur.fetchone()[0]; print(f'FLOPS={flops}'); assert flops==84, f'Expected 84 got {flops}'"
+          echo "✅ 84 flops verified"
+
+      - name: Make json -> boa.json + eal7.json
+        run: |
+          make json
+          make eal7.json
+          cat boa.json | python3 -m json.tool > /dev/null
+          cat eal7.json | python3 -m json.tool > /dev/null
+          cat boa.json | python3 -c "import json; d=json.load(open('boa.json')); assert d['total_flops_quadruple']==84; print(f\"BOA {d['BOA']} IANA {d['IANA']} PORT {d['PORT']} = {d['total_flops_quadruple']} flops\")"
+          echo "✅ boa.json valid"
+
+      - name: Test :8038/matrix live server async
+        run: |
+          python3 MAIN_8038.py &
+          PID=$!
+          sleep 2
+          curl -s http://localhost:8038/matrix | python3 -m json.tool
+          curl -s http://localhost:8038/matrix | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['quadruple']['total_flops_quadruple']==84"
+          kill $PID
+          echo "✅ :8038/matrix live 84 flops"
+
+      - name: Build Docker image
+        run: |
+          docker build -t boa:84-flops .
+          docker run --rm -d -p 8038:8038 --name boa-test boa:84-flops
+          sleep 3
+          curl -s http://localhost:8038/matrix | python3 -c "import json,sys; print(json.load(sys.stdin)['FLOP_QUADRUPLE'])"
+          docker stop boa-test
+          echo "✅ Docker build OK"
