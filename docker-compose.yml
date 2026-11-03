@@ -1,0 +1,6 @@
+services:
+  boa:
+    build: .
+    ports:
+      - "8038:8038"
+    restart: unless-stopped
