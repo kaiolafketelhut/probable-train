@@ -1,0 +1,166 @@
+<template>
+  <div class="mx-auto w-full container">
+    <template v-if="subseriesDocumentError">
+      <div class="container mx-auto">
+        <Alert level="1" variant="warning" heading="Error">
+          {{ subseriesDocumentError }}
+        </Alert>
+      </div>
+    </template>
+
+    <div v-if="subseriesDocument" class="flex flex-col md:flex-row md:flex-row-reverse mt-6">
+      <div class="flex-1 px-5 pb-6 min-w-0">
+        <div class="bg-blue-25 dark:bg-blue-900 px-5 py-4 mb-6">
+          <Heading level="2"> Subscribe to <SubseriesTitle :series="props.subseriesId" /> </Heading>
+          <ReefSubscribeToSubseries :subseries-id="props.subseriesId" />
+          <div class="mt-3 leading-[1.5] text-sm">
+            <p>Get notified when:</p>
+            <ul class="list-disc ml-5 mt-1">
+              <li class="mb-2">An RFC is added to or removed from this {{ props.subseriesId.type.toUpperCase() }}</li>
+              <li>A RFC within the collection changes status, obsoleted by, updates, updated by, or subseries.</li>
+            </ul>
+          </div>
+        </div>
+
+        <p v-if="subseriesDocument.type === 'bcp'">
+          BCPs are stable identifiers for Best Current Practices. A BCP may consist of a single RFC or a group of RFCs
+          related to a specific IETF process or recommended guidelines. The collection may become empty as the BCP
+          evolves.
+        </p>
+        <p v-else-if="subseriesDocument.type === 'std'">
+          STDs are stable identifiers for "Internet Standards." An STD may consist of a single RFC or a group of RFCs
+          related to a specific protocol. The collection may become empty as the STD evolves.
+        </p>
+        <p v-else-if="subseriesDocument.type === 'fyi'">
+          FYIs are stable identifiers for a series of "For Your Information" documents. An FYI consists of a single RFC
+          on general interest topics relating to the Internet. The collection may also be empty. The FYI subseries was
+          retired in 2011.
+        </p>
+      </div>
+
+      <div class="flex-3 min-w-0 flex flex-col gap-4">
+        <RFCCard
+          v-if="sortedDocuments.length > 0"
+          v-for="rfc in sortedDocuments"
+          :key="rfc.number"
+          :rfc="rfc"
+          heading-level="2"
+          :show-abstract="true" />
+        <div v-else class="pl-6 pt-6">
+          <i>
+            <Component :is="formattedTitle" />
+            currently contains no RFCs.
+          </i>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { DateTime } from 'luxon'
+import { SubseriesCommonSchema } from '~/utilities/rfc-validators'
+import { infoSeriesPathBuilder, apiSubseriesPathBuilder, useApiV1UrlOrigin } from '~/utilities/url'
+import { useRfcEditorHead } from '~/utilities/head'
+import type { SeriesId } from '~/utilities/rfc'
+import { formatTitleAsVNode } from '~/utilities/rfc-title'
+
+type Props = {
+  subseriesId: SeriesId
+}
+
+const props = defineProps<Props>()
+
+const route = useRoute()
+
+const sanitisedId = computed(() => `${props.subseriesId.type}${props.subseriesId.number}`)
+
+const apiV1UrlOrigin = useApiV1UrlOrigin()
+
+const subseriesDocumentKey = computed(() => `info-subseries-${sanitisedId.value}`)
+const { data: subseriesDocument, error: subseriesDocumentError } = await useAsyncData(
+  subseriesDocumentKey,
+  async () => {
+    const subseriesPath = apiSubseriesPathBuilder(props.subseriesId.type, props.subseriesId.number)
+    const maybeSubseriesDocument = await $fetch(subseriesPath, {
+      method: 'GET',
+      baseURL: import.meta.server ? apiV1UrlOrigin : undefined
+    })
+    if (typeof maybeSubseriesDocument !== 'object') {
+      console.log(
+        "Unexpected response type. The server Content-Type may be misconfigured so $fetch() doesn't parse as JSON",
+        typeof maybeSubseriesDocument,
+        maybeSubseriesDocument
+      )
+      throw Error(`Unable to load RFC. See console for more.`)
+    }
+    const { data, error } = SubseriesCommonSchema.safeParse(maybeSubseriesDocument)
+    if (error) {
+      console.log('Failed to validate RFC HTML JSON', error, JSON.stringify(maybeSubseriesDocument, null, 2))
+      throw Error(`Unable to load RFC. See console for more.`)
+    }
+    return data
+  }
+)
+
+if (subseriesDocumentError.value) {
+  console.error(subseriesDocumentError.value)
+  throw createError({
+    statusCode: 404,
+    statusMessage: `No ${sanitisedId.value} content found. If this is a new subseries please try again later.`,
+    fatal: true
+  })
+}
+
+const canonicalPath = infoSeriesPathBuilder(sanitisedId.value)
+
+if (
+  // only compare route.path not route.fullPath as that will clobber ?search#id params
+  route.path !== canonicalPath
+) {
+  await navigateTo(
+    {
+      path: canonicalPath
+    },
+    {
+      redirectCode: 301
+    }
+  )
+}
+
+const formattedTitle = computed(() => formatTitleAsVNode(`${props.subseriesId.type}${props.subseriesId.number}`))
+
+const sortedDocuments = computed(() => {
+  if (!subseriesDocument.value) return []
+  const { contents } = subseriesDocument.value
+  return [...contents].sort((a, b) => {
+    const aTime = a.published ? DateTime.fromISO(a.published).toMillis() : Infinity
+    const bTime = b.published ? DateTime.fromISO(b.published).toMillis() : Infinity
+    if (aTime === bTime) return 0
+    return aTime > bTime ? -1 : 1
+  })
+})
+
+const lastRfcPublished = computed(() => {
+  const lastRfc = sortedDocuments.value[sortedDocuments.value.length - 1]
+  if (!lastRfc || !lastRfc.published) return ''
+  return DateTime.fromISO(lastRfc.published)
+})
+
+// Title format is "<TYPE> <number> subseries contains <count> RFCs" (https://github.com/ietf-tools/red/issues/196)
+const pageTitle = subseriesDocument.value
+  ? `${subseriesDocument.value.type.toUpperCase()} ${subseriesDocument.value.number} subseries contains ${subseriesDocument.value.contents.length} RFC${subseriesDocument.value.contents.length === 1 ? '' : 's'}`
+  : ''
+
+const pageDescription = subseriesDocument.value
+  ? `${subseriesDocument.value.type.toUpperCase()}${subseriesDocument.value.number} contains ${subseriesDocument.value.contents.length === 0 ? '0 RFCs' : subseriesDocument.value.contents.map((item) => `RFC ${item.number}`).join(', ')}.`
+  : ''
+
+useRfcEditorHead({
+  title: pageTitle,
+  canonicalPath,
+  description: pageDescription,
+  modifiedDateTime: lastRfcPublished.value !== '' ? lastRfcPublished.value : undefined,
+  contentType: 'article'
+})
+</script>

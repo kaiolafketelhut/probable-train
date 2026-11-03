@@ -1,0 +1,256 @@
+import { z } from 'zod'
+import { DEFAULT_WORD_BREAK_MODE, WordBreakModeSchema, type WordBreakMode } from '~/utilities/word-break-mode'
+import type { Density } from '~/utilities/typesense'
+
+export const SupersededModeSchema = z.union([z.literal('full'), z.literal('compact')]).optional()
+
+// Whether a subject listing shows each subject's description or only its name.
+export const SubjectDensitySchema = z.union([z.literal('full'), z.literal('compact')]).optional()
+
+// The same three-way scale search's result list offers, reused here rather than given its own
+// type: a subject page's document list is the same kind of thing search's is, just fed from a
+// different source.
+export const SubjectDocumentDensitySchema = z
+  .union([z.literal('full'), z.literal('dense'), z.literal('compact')])
+  .optional()
+
+// Bounds of the text-scale slider, shared with AdvancedUISettings.vue so the
+// control and the persisted value can't disagree.
+export const TEXT_SCALE_MIN = 1
+export const TEXT_SCALE_MAX = 2
+export const TEXT_SCALE_STEP = 0.1
+export const DEFAULT_TEXT_SCALE = 1.5
+
+const TextScaleSchema = z.number().min(TEXT_SCALE_MIN).max(TEXT_SCALE_MAX)
+
+// Bounds of the reading-mode speech rate slider, shared with AdvancedUISettings.vue for the same
+// reason as the text-scale bounds.
+export const READING_RATE_MIN = 0.5
+export const READING_RATE_MAX = 2
+export const READING_RATE_STEP = 0.1
+export const DEFAULT_READING_RATE = 1
+
+const ReadingRateSchema = z.number().min(READING_RATE_MIN).max(READING_RATE_MAX)
+
+const UiSettingsSchema = z
+  .object({
+    obsoletedByMode: SupersededModeSchema,
+    updatedByMode: SupersededModeSchema,
+    disableRFCLinkPreview: z.boolean().optional(),
+    textScale: TextScaleSchema.optional(),
+    subjectDensity: SubjectDensitySchema,
+    subjectDocumentDensity: SubjectDocumentDensitySchema,
+    wordBreakMode: WordBreakModeSchema.optional(),
+    readAloudPreformatted: z.boolean().optional(),
+    readingRate: ReadingRateSchema.optional(),
+    readingVoiceUri: z.string().optional(),
+    isRfcSidebarCollapsed: z.boolean().optional()
+  })
+  .optional()
+
+export type UiSettingsKey = keyof NonNullable<z.infer<typeof UiSettingsSchema>>
+
+type UiSettings = z.infer<typeof UiSettingsSchema>
+
+type SupersededMode = NonNullable<z.infer<typeof SupersededModeSchema>>
+
+export type SubjectDensity = NonNullable<z.infer<typeof SubjectDensitySchema>>
+
+const LOCALSTORAGE_KEY = 'rfc-ui'
+
+const DEFAULT_SUPERSEDED_MODE: SupersededMode = 'compact'
+
+// Descriptions shown, so a reader sees what a subject covers without opening it.
+export const DEFAULT_SUBJECT_DENSITY: SubjectDensity = 'full'
+
+export const DEFAULT_SUBJECT_DOCUMENT_DENSITY: Density = 'full'
+
+export const useUiSettingsStore = defineStore('uiSettings', () => {
+  // Whether the UI Settings dialog is showing. Deliberately not persisted: it's
+  // transient UI state, not a setting.
+  const isUiSettingsModalOpenRef = ref<boolean>(false)
+
+  const obsoletedByModeRef = ref<SupersededMode>(DEFAULT_SUPERSEDED_MODE)
+  const updatedByModeRef = ref<SupersededMode>(DEFAULT_SUPERSEDED_MODE)
+  const disableRFCLinkPreviewRef = ref<boolean>(false)
+  const textScaleRef = ref<number>(DEFAULT_TEXT_SCALE)
+  const subjectDensityRef = ref<SubjectDensity>(DEFAULT_SUBJECT_DENSITY)
+  const subjectDocumentDensityRef = ref<Density>(DEFAULT_SUBJECT_DOCUMENT_DENSITY)
+  const wordBreakModeRef = ref<WordBreakMode>(DEFAULT_WORD_BREAK_MODE)
+  const readAloudPreformattedRef = ref<boolean>(false)
+  const readingRateRef = ref<number>(DEFAULT_READING_RATE)
+  // Empty means the browser's default voice for the document's language.
+  const readingVoiceUriRef = ref<string>('')
+  const isRfcSidebarCollapsedRef = ref<boolean>(false)
+  // Deliberately never persisted: reveals the sidebar for this page load without changing the preference.
+  const isRfcSidebarForcedOpenRef = ref<boolean>(false)
+  const isRfcSidebarEffectivelyCollapsedRef = computed(
+    () => isRfcSidebarCollapsedRef.value && !isRfcSidebarForcedOpenRef.value
+  )
+
+  const saveSettings = () => {
+    const uiSettings: UiSettings = {
+      obsoletedByMode: obsoletedByModeRef.value,
+      updatedByMode: updatedByModeRef.value,
+      disableRFCLinkPreview: disableRFCLinkPreviewRef.value,
+      textScale: textScaleRef.value,
+      subjectDensity: subjectDensityRef.value,
+      subjectDocumentDensity: subjectDocumentDensityRef.value,
+      wordBreakMode: wordBreakModeRef.value,
+      readAloudPreformatted: readAloudPreformattedRef.value,
+      readingRate: readingRateRef.value,
+      readingVoiceUri: readingVoiceUriRef.value,
+      isRfcSidebarCollapsed: isRfcSidebarCollapsedRef.value
+    }
+
+    try {
+      const val = JSON.stringify(uiSettings)
+      window.localStorage.setItem(LOCALSTORAGE_KEY, val)
+      console.log('[rfc-ui-settings] saved ui state to localStorage', val)
+    } catch (e) {
+      const errorTitle = `Error writing to localStorage (this is expected behaviour if localStorage is disabled). ${e}`
+      console.log(`[rfc-ui-settings] ${errorTitle}`, e)
+    }
+  }
+
+  const loadSettings = () => {
+    try {
+      const valString = window.localStorage.getItem(LOCALSTORAGE_KEY)
+      if (!valString) {
+        // no value in local storage
+        return
+      }
+      const val = JSON.parse(valString)
+      const { data, error } = UiSettingsSchema.safeParse(val)
+      if (error || !data) {
+        const errorTitle = 'Unable to validate RFC UI settings JSON. Resetting localStorage config.'
+        console.log(errorTitle, error, valString)
+        window.localStorage.removeItem(LOCALSTORAGE_KEY)
+        throw Error(errorTitle)
+      }
+      obsoletedByModeRef.value = data.obsoletedByMode ?? obsoletedByModeRef.value
+      updatedByModeRef.value = data.updatedByMode ?? updatedByModeRef.value
+      disableRFCLinkPreviewRef.value = data.disableRFCLinkPreview ?? disableRFCLinkPreviewRef.value
+      textScaleRef.value = data.textScale ?? textScaleRef.value
+      subjectDensityRef.value = data.subjectDensity ?? subjectDensityRef.value
+      subjectDocumentDensityRef.value = data.subjectDocumentDensity ?? subjectDocumentDensityRef.value
+      wordBreakModeRef.value = data.wordBreakMode ?? wordBreakModeRef.value
+      readAloudPreformattedRef.value = data.readAloudPreformatted ?? readAloudPreformattedRef.value
+      readingRateRef.value = data.readingRate ?? readingRateRef.value
+      readingVoiceUriRef.value = data.readingVoiceUri ?? readingVoiceUriRef.value
+      isRfcSidebarCollapsedRef.value = data.isRfcSidebarCollapsed ?? isRfcSidebarCollapsedRef.value
+    } catch (e: unknown) {
+      const errorTitle = `Error loading from localStorage (this is expected behaviour if localStorage is disabled). ${e}`
+      console.log(`[rfc-ui-settings] ${errorTitle}`, e)
+    }
+  }
+
+  const setSupersededMode = (key: UiSettingsKey, mode: SupersededMode) => {
+    switch (key) {
+      case 'obsoletedByMode':
+        obsoletedByModeRef.value = mode
+        break
+      case 'updatedByMode':
+        updatedByModeRef.value = mode
+        break
+    }
+    saveSettings()
+  }
+
+  const setDisabledRFCLinkPreview = (isDisabled: boolean) => {
+    disableRFCLinkPreviewRef.value = isDisabled
+    saveSettings()
+  }
+
+  // Clamped rather than trusted: an out-of-bounds value would fail TextScaleSchema
+  // on the next load, which resets every other setting along with it.
+  const setTextScale = (textScale: number) => {
+    textScaleRef.value = Math.min(Math.max(textScale, TEXT_SCALE_MIN), TEXT_SCALE_MAX)
+    saveSettings()
+  }
+
+  const setSubjectDensity = (subjectDensity: SubjectDensity) => {
+    subjectDensityRef.value = subjectDensity
+    saveSettings()
+  }
+
+  const setSubjectDocumentDensity = (subjectDocumentDensity: Density) => {
+    subjectDocumentDensityRef.value = subjectDocumentDensity
+    saveSettings()
+  }
+
+  const setWordBreakMode = (wordBreakMode: WordBreakMode) => {
+    wordBreakModeRef.value = wordBreakMode
+    saveSettings()
+  }
+
+  const setReadAloudPreformatted = (readAloudPreformatted: boolean) => {
+    readAloudPreformattedRef.value = readAloudPreformatted
+    saveSettings()
+  }
+
+  // Clamped for the same reason as setTextScale.
+  const setReadingRate = (readingRate: number) => {
+    readingRateRef.value = Math.min(Math.max(readingRate, READING_RATE_MIN), READING_RATE_MAX)
+    saveSettings()
+  }
+
+  const setReadingVoiceUri = (readingVoiceUri: string) => {
+    readingVoiceUriRef.value = readingVoiceUri
+    saveSettings()
+  }
+
+  const setIsRfcSidebarCollapsed = (isCollapsed: boolean) => {
+    isRfcSidebarCollapsedRef.value = isCollapsed
+    saveSettings()
+  }
+
+  const setIsRfcSidebarForcedOpen = (isForcedOpen: boolean) => {
+    isRfcSidebarForcedOpenRef.value = isForcedOpen
+  }
+
+  const toggleRfcSidebar = () => {
+    const shouldCollapse = !isRfcSidebarEffectivelyCollapsedRef.value
+    // Without clearing the override, collapsing while it is forced open would leave the preference
+    // unchanged and the sidebar open.
+    isRfcSidebarForcedOpenRef.value = false
+    setIsRfcSidebarCollapsed(shouldCollapse)
+  }
+
+  const setIsUiSettingsModalOpen = (isOpen: boolean) => {
+    isUiSettingsModalOpenRef.value = isOpen
+  }
+
+  onMounted(() => {
+    loadSettings()
+  })
+
+  return {
+    isUiSettingsModalOpen: isUiSettingsModalOpenRef,
+    setIsUiSettingsModalOpen,
+    obsoletedByMode: obsoletedByModeRef,
+    updatedByMode: updatedByModeRef,
+    setSupersededMode,
+    disableRFCLinkPreview: disableRFCLinkPreviewRef,
+    setDisabledRFCLinkPreview,
+    textScale: textScaleRef,
+    setTextScale,
+    subjectDensity: subjectDensityRef,
+    setSubjectDensity,
+    subjectDocumentDensity: subjectDocumentDensityRef,
+    setSubjectDocumentDensity,
+    wordBreakMode: wordBreakModeRef,
+    setWordBreakMode,
+    readAloudPreformatted: readAloudPreformattedRef,
+    setReadAloudPreformatted,
+    readingRate: readingRateRef,
+    setReadingRate,
+    readingVoiceUri: readingVoiceUriRef,
+    setReadingVoiceUri,
+    isRfcSidebarCollapsed: isRfcSidebarCollapsedRef,
+    setIsRfcSidebarCollapsed,
+    isRfcSidebarEffectivelyCollapsed: isRfcSidebarEffectivelyCollapsedRef,
+    setIsRfcSidebarForcedOpen,
+    toggleRfcSidebar
+  }
+})

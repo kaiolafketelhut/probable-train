@@ -1,0 +1,213 @@
+// @vitest-environment nuxt
+import { test, expect } from 'vitest'
+import {
+  IETF_PRIVACY_STATEMENT_URL,
+  rfcCitePathBuilder,
+  rfcFormatPathBuilder,
+  textToAnchorId,
+  isExternalLink,
+  isInternalLink,
+  isMailToLink,
+  isTelLink,
+  isOutsideNuxtLink,
+  parseMaybeRfcLink,
+  isHashLink,
+  subjectsPathBuilder,
+  sanitiseUserProfileImage
+} from './url'
+import type { ValidHrefs } from './url'
+
+/**
+ * Should error if ValidHrefs type becomes overly broad (ie `string` or
+ * `any`) so it matches a non-existant href, hence the variable name.
+ * To fix this bug look at ValidHrefs itself, find the new type that is
+ * overly broad and fix it. If you made a pathBuilder function ensure
+ * the return value(s) have `as const` like the other path builder functions.
+ */
+// @ts-expect-error See preceding comment
+const _HrefThatShouldFail: ValidHrefs = '/href-that-should-fail/'
+
+/**
+ * Should catch if ValidHrefs fails to match a markdown path.
+ *
+ * (Although this succeeds with current markdown files it's possible that future
+ * markdown changes to break this, and if so just choose another working href
+ * from ValidHrefs)
+ */
+const _HrefThatShouldSucceed: ValidHrefs = '/series/rfc/#what-is-an-rfc'
+
+test('rfcCitePathBuilder: txt', () => {
+  expect(rfcCitePathBuilder('rfc9000', 'txt')).toEqual('/refs/ref9000.txt')
+  expect(rfcCitePathBuilder('RFC9000', 'txt')).toEqual('/refs/ref9000.txt')
+})
+
+test('rfcCitePathBuilder: xml', () => {
+  expect(rfcCitePathBuilder('rfc9000', 'xml')).toEqual('https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9000.xml')
+  expect(rfcCitePathBuilder('RFC9000', 'xml')).toEqual('https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9000.xml')
+})
+
+test('rfcCitePathBuilder: bibTeX', () => {
+  expect(rfcCitePathBuilder('rfc9000', 'bibTeX')).toEqual('https://datatracker.ietf.org/doc/rfc9000/bibtex/')
+  expect(rfcCitePathBuilder('RFC9000', 'bibTeX')).toEqual('https://datatracker.ietf.org/doc/rfc9000/bibtex/')
+})
+
+test('rfcFormatPathBuilder: html', () => {
+  expect(rfcFormatPathBuilder('rfc9000', 'html')).toEqual('/rfc/rfc9000.html')
+  expect(rfcFormatPathBuilder('RFC9000', 'html')).toEqual('/rfc/rfc9000.html')
+})
+
+test('textToAnchorId', () => {
+  expect(textToAnchorId('What Sort Of Documents Are Independent Submissions?')).toEqual(
+    'what-sort-of-documents-are-independent-submissions'
+  )
+
+  expect(
+    textToAnchorId('Some RFCs') // testing to ensure it doesn't turn 'RFCs' into 'rf-cs' which can happen with incorrect usage of kebabCase
+  ).toEqual('some-rfcs')
+
+  expect(
+    textToAnchorId('Section 2.2') // testing to ensure it doesn't turn "2.2" into "22" which wouldn't be easy to read as an anchor id.
+  ).toEqual('section-2-2')
+})
+
+test('isExternalLink', () => {
+  expect(isExternalLink(undefined)).toEqual(true)
+  expect(isExternalLink('/something')).toEqual(false)
+  expect(isExternalLink('#something')).toEqual(false)
+  expect(isExternalLink('http://')).toEqual(true)
+  expect(isExternalLink('https://')).toEqual(true)
+  expect(isExternalLink(IETF_PRIVACY_STATEMENT_URL)).toEqual(true)
+})
+
+test('isInternalLink', () => {
+  expect(isInternalLink(undefined)).toEqual(false)
+  expect(isInternalLink('/something')).toEqual(true)
+  expect(isInternalLink('#something')).toEqual(true)
+  expect(isInternalLink('http://')).toEqual(false)
+  expect(isInternalLink('https://')).toEqual(false)
+  expect(isInternalLink(IETF_PRIVACY_STATEMENT_URL)).toEqual(false)
+})
+
+test('isMailToLink', () => {
+  expect(isMailToLink(undefined)).toEqual(false)
+  expect(isMailToLink('/something')).toEqual(false)
+  expect(isMailToLink('#something')).toEqual(false)
+  expect(isMailToLink('http://')).toEqual(false)
+  expect(isMailToLink('https://')).toEqual(false)
+  expect(isMailToLink(IETF_PRIVACY_STATEMENT_URL)).toEqual(false)
+  expect(
+    isMailToLink(
+      // with a leading space, should not match
+      ' mailto:user@example.com'
+    )
+  ).toEqual(false)
+
+  expect(isMailToLink('mailto:user@example.com')).toEqual(true)
+  expect(isMailToLink('tel:+17036253917')).toEqual(false)
+})
+
+test('isTelLink', () => {
+  expect(isTelLink(undefined)).toEqual(false)
+  expect(isTelLink('/something')).toEqual(false)
+  expect(isTelLink('#something')).toEqual(false)
+  expect(isTelLink('http://')).toEqual(false)
+  expect(isTelLink('https://')).toEqual(false)
+  expect(isTelLink(IETF_PRIVACY_STATEMENT_URL)).toEqual(false)
+  expect(isTelLink('mailto:user@example.com')).toEqual(false)
+  expect(
+    isTelLink(
+      // with a leading space, should not match
+      ' tel:+17036253917'
+    )
+  ).toEqual(false)
+
+  expect(isTelLink('tel:+17036253917')).toEqual(true)
+})
+
+test('isOutsideNuxtLink', () => {
+  // Phone and email links must not become NuxtLinks, otherwise Vue Router treats them as routes
+  // and the browser never gets the chance to hand them to the dialler or mail client.
+  expect(isOutsideNuxtLink('tel:+17036253917')).toEqual(true)
+  expect(isOutsideNuxtLink('mailto:user@example.com')).toEqual(true)
+
+  expect(isOutsideNuxtLink('/about/contact/')).toEqual(false)
+})
+
+test('isHashLink', () => {
+  expect(isHashLink('#something')).toEqual(true)
+
+  expect(
+    isHashLink(
+      // leading space, should not match
+      ' #something'
+    )
+  ).toEqual(false)
+
+  expect(isHashLink(undefined)).toEqual(false)
+  expect(isHashLink('/something')).toEqual(false)
+  expect(isHashLink('http://')).toEqual(false)
+  expect(isHashLink('https://')).toEqual(false)
+  expect(isHashLink(IETF_PRIVACY_STATEMENT_URL)).toEqual(false)
+  expect(isHashLink('mailto:user@example.com')).toEqual(false)
+})
+
+test('parseMaybeRfcLink', () => {
+  expect(parseMaybeRfcLink('/something/rfc1/something-else')).toEqual({
+    type: 'rfc',
+    number: 1
+  })
+
+  expect(parseMaybeRfcLink('/rfc/rfc10101')).toEqual({
+    type: 'rfc',
+    number: 10101
+  })
+
+  expect(parseMaybeRfcLink('#rfc10101')).toEqual({
+    type: 'rfc',
+    number: 10101
+  })
+
+  expect(parseMaybeRfcLink('/')).toEqual(undefined)
+  expect(parseMaybeRfcLink('#section-2.1')).toEqual(undefined)
+  expect(parseMaybeRfcLink('https://example.com/')).toEqual(undefined)
+  expect(
+    // not a known domain, so don't make a preview link of content we
+    // might be wrong about, even though it's got RFC stuff in the `href`
+    parseMaybeRfcLink('https://example.com/rfc/rfc10101#section-2.1')
+  ).toEqual(undefined)
+})
+
+test('subjectsPathBuilder: path safe encoding', () => {
+  expect(subjectsPathBuilder('http/2')).toBe('/subjects/http%2F2/')
+})
+
+test('sanitiseUserProfileImage: accepts https URLs, trimming surrounding whitespace', () => {
+  expect(sanitiseUserProfileImage('https://example.com/avatar.png')).toEqual('https://example.com/avatar.png')
+  expect(sanitiseUserProfileImage('  https://example.com/avatar.png  ')).toEqual('https://example.com/avatar.png')
+})
+
+test('sanitiseUserProfileImage: rejects missing/empty values', () => {
+  expect(sanitiseUserProfileImage(undefined)).toEqual(undefined)
+  expect(sanitiseUserProfileImage(null)).toEqual(undefined)
+  expect(sanitiseUserProfileImage('')).toEqual(undefined)
+  expect(sanitiseUserProfileImage('   ')).toEqual(undefined)
+})
+
+test('sanitiseUserProfileImage: rejects non-https schemes', () => {
+  expect(sanitiseUserProfileImage('http://example.com/avatar.png')).toEqual(undefined)
+  expect(sanitiseUserProfileImage('javascript:alert(1)')).toEqual(undefined)
+  expect(sanitiseUserProfileImage('data:image/png;base64,aGVsbG8=')).toEqual(undefined)
+  expect(sanitiseUserProfileImage('ftp://example.com/avatar.png')).toEqual(undefined)
+})
+
+test('sanitiseUserProfileImage: rejects unparseable URLs', () => {
+  expect(sanitiseUserProfileImage('not a url')).toEqual(undefined)
+})
+
+test('sanitiseUserProfileImage: rejects oversized values, accepts values right at the limit', () => {
+  const path = 'a'.repeat(2048 - 'https://example.com/'.length)
+  const atLimit = `https://example.com/${path}`
+  expect(atLimit.length).toEqual(2048)
+  expect(sanitiseUserProfileImage(atLimit)).toEqual(atLimit)
+  expect(sanitiseUserProfileImage(`${atLimit}a`)).toEqual(undefined)
+})

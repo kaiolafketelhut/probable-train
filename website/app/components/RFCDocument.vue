@@ -1,0 +1,246 @@
+<template>
+  <Breadcrumbs :breadcrumb-items="breadcrumbItems" class="flex-1 container mx-auto pl-2 md:pl-5" />
+  <BodyLayoutRFCDocument
+    :is-sidebar-collapsed="featureFlags.hasCollapsibleSidebar && uiSettings.isRfcSidebarEffectivelyCollapsed">
+    <template #sidebar>
+      <RFCDocumentSidebar
+        v-if="rfcBucketHtmlDocument"
+        v-model:selected-tab="selectedTab"
+        v-model:is-modal-open="isModalOpen"
+        :rfc-bucket-html-document="rfcBucketHtmlDocument"
+        :has-table-of-contents="hasToc"
+        :goto-errata="gotoErrata"
+        :change-tab="changeTab" />
+    </template>
+    <template v-if="rfcBucketHtmlDocumentError">
+      <div class="container mx-auto">
+        <Alert level="1" variant="warning" heading="Error">
+          {{ rfcBucketHtmlDocumentError }}
+        </Alert>
+      </div>
+    </template>
+
+    <RFCDocumentBody
+      v-if="rfcBucketHtmlDocument"
+      v-model:is-modal-open="isModalOpen"
+      :rfc-bucket-html-document="rfcBucketHtmlDocument"
+      :breadcrumb-items="breadcrumbItems"
+      :goto-errata="gotoErrata"
+      :change-tab="changeTab"
+      :reveal-toc-link="revealTocLink" />
+  </BodyLayoutRFCDocument>
+  <!-- Once, here, because reading mode is offered from more than one place on the page -->
+  <RFCReadingModeErrorModal v-model:error="readingError" />
+</template>
+
+<script setup lang="ts">
+import { DateTime } from 'luxon'
+import { RfcBucketHtmlDocumentSchema } from '~/utilities/rfc-validators'
+import {
+  apiRfcBucketDocumentPathBuilder,
+  infoSeriesPathBuilder,
+  useApiV1UrlOrigin,
+  usePublicSiteUrlOrigin
+} from '~/utilities/url'
+import { rfcCommonToGoogleScholar, useRfcEditorHead } from '~/utilities/head'
+import type { SeriesId } from '~/utilities/rfc'
+import type { BreadcrumbItem } from '~/components/BreadcrumbsTypes'
+import { useReadingModeError } from '~/utilities/reading-mode/use-reading-mode'
+import { useFeatureFlags } from '~/utilities/feature-flags'
+import { useUiSettingsStore } from '~/stores/ui-settings'
+import { useRevealTocLink } from '~/utilities/toc-link-back'
+
+type Props = {
+  rfcId: SeriesId
+}
+
+const props = defineProps<Props>()
+
+const route = useRoute()
+
+const featureFlags = useFeatureFlags()
+
+const uiSettings = useUiSettingsStore()
+
+const readingError = useReadingModeError()
+
+const apiV1UrlOrigin = useApiV1UrlOrigin()
+
+const sanitisedId = computed(() => `${props.rfcId.type}${props.rfcId.number}`)
+
+const asyncRfcBucketHtmlDocumentKey = computed(() => `info-buckethtmldocument-${sanitisedId.value}`)
+const { data: rfcBucketHtmlDocument, error: rfcBucketHtmlDocumentError } = await useAsyncData(
+  asyncRfcBucketHtmlDocumentKey,
+  async () => {
+    let maybeRfcBucketDocument: unknown = undefined
+    if (
+      // IMPORTANT DEV NOTE
+      // This is for internal dev testing only.
+      // This route should not be rendered on staging or prod.
+      // Access this via route of
+      //  * `/info/rfc0/?styleguide` or
+      //  * `/info/rfc0/?too-wide`
+      // to render test pages
+      import.meta.dev &&
+      props.rfcId.number === 0
+    ) {
+      const mapping = {
+        styleguide: () => import('../utilities/test-utils/rfc-html-styleguide.json'),
+        'too-wide': () => import('../utilities/test-utils/rfc-html-too-wide.json')
+      }
+      const mappingEntries = Object.entries(mapping)
+      for (const mappingEntry of mappingEntries) {
+        const [key, asyncLoader] = mappingEntry
+        if (key in route.query) {
+          maybeRfcBucketDocument = await asyncLoader()
+        }
+      }
+    } else {
+      const rfcDataPath = apiRfcBucketDocumentPathBuilder(props.rfcId.number)
+      maybeRfcBucketDocument = await $fetch(rfcDataPath, {
+        method: 'GET',
+        baseURL: import.meta.server ? apiV1UrlOrigin : undefined
+      })
+      // maybeRfcBucketDocument = await $fetch(rfcDataPath, {
+      //   method: 'GET',
+      //   baseURL: 'https://www.staging.rfc-editor.org'
+      // })
+    }
+
+    if (typeof maybeRfcBucketDocument !== 'object') {
+      console.log(
+        "Unexpected response type. The server Content-Type may be misconfigured so $fetch() doesn't parse as JSON",
+        typeof maybeRfcBucketDocument,
+        maybeRfcBucketDocument
+      )
+      throw Error(`Unable to load RFC. See console for more.`)
+    }
+    const { data, error } = RfcBucketHtmlDocumentSchema.safeParse(maybeRfcBucketDocument)
+    if (error) {
+      console.error('Failed to validate RFC HTML JSON', error, JSON.stringify(maybeRfcBucketDocument, null, 2))
+      throw Error(`Unable to load RFC (RFC data failed validation). See console for more. ${JSON.stringify(error)}`)
+    }
+    return data
+  },
+  {
+    server: true // we want server fetching so that we can generate server HTTP 404s if necessary
+  }
+)
+
+if (rfcBucketHtmlDocumentError.value) {
+  console.error(rfcBucketHtmlDocumentError.value)
+  throw createError({
+    status: 404,
+    statusText: `No ${props.rfcId.type.toUpperCase()} ${props.rfcId.number} content found. If this is a recently published RFC please try again later.`,
+    fatal: true
+  })
+}
+
+const hasToc = computed(() =>
+  Boolean(
+    rfcBucketHtmlDocument.value?.tableOfContents?.sections &&
+    rfcBucketHtmlDocument.value?.tableOfContents?.sections.length > 0
+  )
+)
+
+const selectedTab = ref(hasToc.value ? 0 : 1)
+
+function changeTab(index: number) {
+  selectedTab.value = index
+}
+
+function gotoErrata() {
+  const responsiveModeStore = useResponsiveModeStore()
+
+  if (responsiveModeStore.responsiveMode === 'Mobile') {
+    isModalOpen.value = true
+  }
+
+  selectedTab.value = 2
+
+  nextTick(() => {
+    // there are potentially two in the DOM but only one should be visible
+    const errataTabs = document.querySelectorAll<HTMLElement>('[data-errata-tab]')
+
+    function focusIfVisible(elm: HTMLElement) {
+      if (elm.checkVisibility()) {
+        elm.focus()
+      }
+    }
+
+    if (errataTabs) {
+      errataTabs.forEach(focusIfVisible)
+    }
+  })
+}
+
+const breadcrumbItems = computed((): BreadcrumbItem[] => {
+  const items: BreadcrumbItem[] = [{ url: '/', label: 'Home' }]
+  if (rfcBucketHtmlDocument.value) {
+    const { rfc } = rfcBucketHtmlDocument.value
+    items.push({
+      label: `RFC ${rfc.number}`,
+      ariaLabel: `RFC ${rfc.number}${rfc.subseries?.map((subseries) => ` ${subseries.type.toUpperCase()} ${subseries.number}`).join(', ') ?? ''}: ${rfc.title}`
+    })
+  }
+  return items
+})
+
+const isModalOpen = ref(false)
+
+const revealTocLink = useRevealTocLink({ selectedTab, isModalOpen })
+
+const canonicalPath = infoSeriesPathBuilder(sanitisedId.value)
+
+if (
+  // only compare route.path not route.fullPath as that will clobber ?search#id params
+  route.path !== canonicalPath
+) {
+  await navigateTo(
+    {
+      path: canonicalPath
+    },
+    {
+      redirectCode: 301
+    }
+  )
+}
+
+// Title format is "RFC <number>: <title>" (https://github.com/ietf-tools/red/issues/196)
+const pageTitle = rfcBucketHtmlDocument.value
+  ? `RFC ${rfcBucketHtmlDocument.value.rfc.number}: ${rfcBucketHtmlDocument.value.rfc.title}`
+  : ''
+
+const resourceTimestampDatetime = rfcBucketHtmlDocument.value
+  ? DateTime.fromISO(rfcBucketHtmlDocument.value.timestampIso)
+  : undefined
+
+const publicSiteOrigin = usePublicSiteUrlOrigin()
+
+useRfcEditorHead({
+  title: pageTitle,
+  canonicalPath,
+  noIndex: props.rfcId.number < 1, // RFC number 0 and negative numbers are used internally for test pages, and should not be indexed or even shown on non-dev environments
+  description: rfcBucketHtmlDocument.value?.rfc.abstract ?? '',
+  keywords: rfcBucketHtmlDocument.value?.rfc.keywords,
+  modifiedDateTime: rfcBucketHtmlDocument.value?.rfc.published
+    ? DateTime.fromISO(rfcBucketHtmlDocument.value.rfc.published)
+    : undefined,
+  contentType: 'article',
+  customThumbnail: rfcBucketHtmlDocument.value ? `rfc${rfcBucketHtmlDocument.value.rfc.number}` : undefined,
+  customThumbnailAltText: rfcBucketHtmlDocument.value
+    ? `RFC ${rfcBucketHtmlDocument.value.rfc.number}: ${rfcBucketHtmlDocument.value.rfc.title}${rfcBucketHtmlDocument.value.rfc.abstract ? `. ${rfcBucketHtmlDocument.value.rfc.abstract}.` : ''}`
+    : undefined,
+  resourceTimestamps: resourceTimestampDatetime
+    ? [
+        {
+          name: `info-${sanitisedId.value}`,
+          timestamp: resourceTimestampDatetime
+        }
+      ]
+    : undefined,
+  googleScholarMetadata: rfcBucketHtmlDocument.value
+    ? rfcCommonToGoogleScholar(rfcBucketHtmlDocument.value.rfc, publicSiteOrigin)
+    : undefined
+})
+</script>

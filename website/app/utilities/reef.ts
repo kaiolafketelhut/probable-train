@@ -1,0 +1,424 @@
+// Client-side API client for the external Reef API, for the Personalisation feature.
+//
+// Request/response shapes are not written by hand: they're read off the generated
+// ../../generated/reef-api-client types, which are produced from reef_api.yaml by
+// `npm run generate:reef-api-client`. Regenerate after any spec change and vue-tsc will
+// point at whichever call sites no longer match.
+//
+// Reef is reached directly from the client with the user's OIDC access token, so every
+// operation here is browser-only and we use plain fetch rather than $fetch. Nothing in this
+// file is called during the server render: the public engagement numbers an RFC page shows
+// arrive with whatever data the route already loads, so a visitor who isn't signed in costs
+// Reef nothing at all.
+// Every operation in the spec gets one thin function below; reefFetch holds the single
+// copy of the base-URL, bearer-token, JSON and error-handling policy. If this file grows,
+// split it into a utilities/reef/ directory.
+//
+// Nothing here coordinates requests. Keeping one reader's answers in step — loading them when the
+// reader or the page changes, queueing their changes, putting a control back when Reef refuses —
+// belongs to ~/stores/reef, which is the thing that holds the answers.
+
+import type { components, operations, paths } from '../../generated/reef-api-client'
+import { DjangoErrorDetailSchema } from '~/utilities/django-schema'
+import { getAccessToken } from '~/utilities/oidc'
+
+export type DigestPreference = components['schemas']['DigestPreference']
+export type PatchedDigestPreference = components['schemas']['PatchedDigestPreference']
+export type DocumentSet = components['schemas']['DocumentSet']
+export type PatchedDocumentSet = components['schemas']['PatchedDocumentSet']
+export type DocumentSetEntry = components['schemas']['DocumentSetEntry']
+export type WebNotification = components['schemas']['WebNotification']
+export type PaginatedWebNotificationList = components['schemas']['PaginatedWebNotificationList']
+export type Popularity = components['schemas']['Popularity']
+export type PopularityEntry = components['schemas']['PopularityEntry']
+export type Subject = components['schemas']['Subject']
+export type SubjectDetail = components['schemas']['SubjectDetail']
+export type SubjectDetailOrRedirect = components['schemas']['SubjectDetailOrRedirect']
+export type RetiredSubject = components['schemas']['RetiredSubject']
+export type SubjectAlias = components['schemas']['SubjectAlias']
+export type Subscription = components['schemas']['Subscription']
+export type SubscriptionKind = components['schemas']['KindEnum']
+export type Survey = components['schemas']['Survey']
+export type PatchedSurvey = components['schemas']['PatchedSurvey']
+export type SurveyDefinition = components['schemas']['SurveyDefinition']
+export type SurveyResults = operations['surveys_results_retrieve']['responses'][200]['content']['application/json']
+export type OpenSurvey = components['schemas']['OpenSurvey']
+export type ResponseCreate = components['schemas']['ResponseCreate']
+
+// Thrown for any non-2xx response. `body` is the parsed error payload when the server sent
+// JSON, otherwise the raw text, so callers can surface field-level validation errors.
+export class ReefError extends Error {
+  readonly status: number
+  readonly statusText: string
+  readonly body: unknown
+
+  constructor({
+    status,
+    statusText,
+    body,
+    method,
+    path
+  }: {
+    status: number
+    statusText: string
+    body: unknown
+    method: string
+    path: string
+  }) {
+    // Reef reports why in DRF's `detail` string, and for a 401 that's the whole diagnosis:
+    // "Authentication credentials were not provided" (we sent no token) reads very
+    // differently from "Invalid bearer token: <JWT error>" (we sent one and it was
+    // rejected). Fold it into the message, because an uncaught error logs only
+    // Error.message and `body` would otherwise go unread in the console.
+    const { data } = DjangoErrorDetailSchema.safeParse(body)
+    const detail = data === undefined ? '' : ` — ${data.detail}`
+    super(`[reef] ${method} ${path} failed: ${status} ${statusText}${detail}`)
+    this.name = 'ReefError'
+    this.status = status
+    this.statusText = statusText
+    this.body = body
+  }
+}
+
+type ReefMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+
+// A spec path with each `{param}` made a wildcard, so the path a call builds with its id spliced in
+// can be matched against it, with or without a query string.
+type PathPattern<Path extends string> = Path extends `${infer Head}{${string}}${infer Tail}`
+  ? `${Head}${string}${PathPattern<Tail>}`
+  : Path
+
+type SpecPathsMatching<Candidate extends string> = {
+  [Path in keyof paths & string]: Candidate extends PathPattern<Path> | `${PathPattern<Path>}?${string}` ? Path : never
+}[keyof paths & string]
+
+// Whether the spec defines this method on this path. Without it a call can name a path that exists
+// and a method that does not, which type-checks as a string and then fails as a 405 in the browser.
+type IsSpecOperation<Candidate extends string, Method extends ReefMethod> = [
+  Extract<
+    {
+      [Path in SpecPathsMatching<Candidate>]: NonNullable<paths[Path][Lowercase<Method> & keyof paths[Path]]>
+    }[SpecPathsMatching<Candidate>],
+    object
+  >
+] extends [never]
+  ? false
+  : true
+
+type ReefRequest<Method extends ReefMethod = ReefMethod> = {
+  method?: Method
+  body?: unknown
+  // Whether the OIDC bearer token is attached, mirroring the operation's `security` in the
+  // spec. 'required' for the operations that list only BearerAuth/cookieAuth: anonymous is
+  // not a valid outcome, so no token means we fail without sending the request. 'optional'
+  // for those that also list `{}`, where being logged in only changes the response (an
+  // authenticated-visibility survey, an attributed response) and anonymous is fine. Omitted
+  // for the ones Red always calls anonymously.
+  auth?: 'required' | 'optional'
+  signal?: AbortSignal
+}
+
+const parseBody = async (response: Response): Promise<unknown> => {
+  const text = await response.text()
+  if (text === '') {
+    return undefined
+  }
+  const contentType = response.headers.get('content-type') ?? ''
+  if (!contentType.includes('json')) {
+    return text
+  }
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
+
+// The dev-fixture branch of reefFetch: the stand-in answer for a request, or `answered: false` when
+// nothing covers it. A fixtured failure is raised here rather than described back to the caller, so
+// that ReefError keeps being built in exactly one place.
+//
+// Its own function, and exported, only because reefFetch reaches it behind `import.meta.dev` and
+// that is false under the test environment — so this is where its tests can get at it.
+export const answerFromFixtures = async <T>({
+  configured,
+  method,
+  path
+}: {
+  configured: string
+  method: string
+  path: string
+}): Promise<{ answered: true; body: T } | { answered: false }> => {
+  const { fixtureFor } = await import('~/utilities/reef-fixtures')
+  const fixture = await fixtureFor(configured, method, path)
+
+  // No fixture for this operation: the caller falls through to the real Reef, so one nobody has
+  // written yet is a failed request naming the path rather than a page that quietly renders empty.
+  if (fixture === undefined) {
+    return { answered: false }
+  }
+
+  if (fixture.outcome === 'error') {
+    const { status, statusText, body } = fixture
+    throw new ReefError({ status, statusText, body, method, path })
+  }
+
+  return { answered: true, body: fixture.body as T }
+}
+
+const reefFetch = async <T, Path extends string, Method extends ReefMethod = 'GET'>(
+  path: Path,
+  request?: ReefRequest<Method> & (IsSpecOperation<Path, Method> extends true ? unknown : { notInSpec: never })
+): Promise<T> => {
+  const { method = 'GET', body, auth, signal } = (request ?? {}) as ReefRequest
+  const { reefBase, reefApi } = useRuntimeConfig().public
+
+  // Local dev against stand-in answers, when NUXT_PUBLIC_REEF_API names a scenario. Ahead of
+  // the auth guard below on purpose: the point of fixtures is to reach the pages with no Reef
+  // behind them, and most of what they show is behind `auth: 'required'`, which would otherwise
+  // fail here for want of a session. `import.meta.dev` is compile-time, so a production build drops
+  // this branch and the import under it, and no fixture reaches the shipped bundle.
+  if (import.meta.dev && reefApi !== '') {
+    const fixture = await answerFromFixtures<T>({ configured: reefApi, method, path })
+    if (fixture.answered) {
+      return fixture.body
+    }
+  }
+
+  const token = auth === undefined ? undefined : await getAccessToken()
+
+  // Sending an authenticated-only operation with no Authorization header can only ever come
+  // back 401, and the resulting error reads like the server rejecting us rather than like a
+  // session we never had. Fail here instead, so the cause is named. Synthesised rather than
+  // observed, but a 401 ReefError is what callers already branch on.
+  if (auth === 'required' && token === undefined) {
+    throw new ReefError({
+      status: 401,
+      statusText: 'Unauthorized',
+      body: { detail: 'Not signed in, or the session could not be refreshed.' },
+      method,
+      path
+    })
+  }
+
+  const headers = new Headers({ Accept: 'application/json' })
+  if (token !== undefined) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+  if (body !== undefined) {
+    headers.set('Content-Type', 'application/json')
+  }
+
+  const response = await fetch(`${reefBase}${path}`, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+    signal
+  })
+
+  if (!response.ok) {
+    const { status, statusText } = response
+    throw new ReefError({
+      status,
+      statusText,
+      body: await parseBody(response),
+      method,
+      path
+    })
+  }
+
+  // The 204 operations (subscription and survey deletes) are typed as returning void.
+  if (response.status === 204) {
+    return undefined as T
+  }
+
+  return (await parseBody(response)) as T
+}
+
+// The curated most-popular list, most popular first, plus when it was last recomputed. Public.
+export const getPopularity = (signal?: AbortSignal): Promise<Popularity> =>
+  reefFetch('/api/reef/popularity/', { signal })
+
+// The whole subject vocabulary, in tree order. Public, and unpaginated because the vocabulary is
+// curated by staff rather than self-served, so there's no page to ask for and no token to send.
+// Every entry carries `parent` and `path`, so ~/utilities/subject-tree builds the hierarchy out of
+// this one answer without a second read.
+export const getSubjects = (signal?: AbortSignal): Promise<Subject[]> => reefFetch('/api/reef/subjects/', { signal })
+
+// One subject and the documents carrying it. Reef answers this path with one of three shapes: the
+// subject itself, a retired subject naming what it was merged into, or an alias naming the subject
+// it resolves to. Both of the latter are redirects, and callers narrow with the predicates below.
+export const getSubject = (slug: string, signal?: AbortSignal): Promise<SubjectDetailOrRedirect> =>
+  reefFetch(`/api/reef/subjects/${encodeURIComponent(slug)}/`, { signal })
+
+// What separates the three shapes is which key is present, so these are predicates rather than an
+// `in` check repeated at each call site. `retired` is not enough on its own: a live subject carries
+// it too, and an alias carries it not at all.
+export const isRetiredSubject = (subject: SubjectDetailOrRedirect): subject is RetiredSubject =>
+  'retired' in subject && subject.retired
+
+export const isSubjectAlias = (subject: SubjectDetailOrRedirect): subject is SubjectAlias => 'alias_of' in subject
+
+// --- This reader's own state, all of it --------------------------------------------------
+
+export const getSubscriptions = (signal?: AbortSignal): Promise<Subscription[]> =>
+  reefFetch('/api/reef/subscriptions/', { auth: 'required', signal })
+
+// id and created_at are server-assigned, so callers supply only kind, params, and — for the
+// `subject` kind, whose identity is a foreign key rather than a params entry — subject.
+export const createSubscription = (
+  subscription: Pick<Subscription, 'kind' | 'params' | 'subject'>,
+  signal?: AbortSignal
+): Promise<Subscription> =>
+  reefFetch('/api/reef/subscriptions/', {
+    method: 'POST',
+    body: subscription,
+    auth: 'required',
+    signal
+  })
+
+export const deleteSubscription = (id: number, signal?: AbortSignal): Promise<void> =>
+  reefFetch(`/api/reef/subscriptions/${id}/`, { method: 'DELETE', auth: 'required', signal })
+
+// The caller's own sets, each carrying its `documents` membership. There's no per-document
+// endpoint to ask "which of my sets contain this RFC", so this list is the only read available.
+export const getSets = (signal?: AbortSignal): Promise<DocumentSet[]> =>
+  reefFetch('/api/reef/sets/', { auth: 'required', signal })
+
+// One set by id. The id is the whole of a set's identity — there's no second, public read to keep
+// in step with this one — so a shared link is this link whoever follows it. `optional` auth for
+// that reason: a public set needs no token, which is what makes the link shareable, and a private
+// one is the owner's to read with theirs. A set the caller may not read is left out of the queryset
+// rather than refused, so it answers 404 without confirming that it exists.
+export const getSet = (id: string, signal?: AbortSignal): Promise<DocumentSet> =>
+  reefFetch(`/api/reef/sets/${id}/`, { auth: 'optional', signal })
+
+// Create one set. id, slug, owner_name, created_at and updated_at are server-assigned, so callers
+// supply only the title and the optional description. Membership isn't settable here either —
+// `documents` is read-only on this schema, so a set is always born empty and the first document is
+// a second call to putSetDocument.
+export const createSet = (
+  set: Omit<DocumentSet, 'id' | 'slug' | 'owner_name' | 'documents' | 'created_at' | 'updated_at'>,
+  signal?: AbortSignal
+): Promise<DocumentSet> => reefFetch('/api/reef/sets/', { method: 'POST', body: set, auth: 'required', signal })
+
+// Add one document to one set, returning the updated set. Reef canonicalizes the identifier, so
+// the compact form is what we send. The spec calls PUT idempotent, so adding a document the set
+// already holds answers 200 rather than an error — only the first add answers 201, and callers
+// have no reason to tell those apart.
+export const putSetDocument = (id: string, doc: string, signal?: AbortSignal): Promise<DocumentSet> =>
+  reefFetch(`/api/reef/sets/${id}/documents/${encodeURIComponent(doc)}/`, {
+    method: 'PUT',
+    auth: 'required',
+    signal
+  })
+
+// Remove one document from one set. Answers 204, so unlike the PUT there's no updated set to read
+// the new membership from.
+export const deleteSetDocument = (id: string, doc: string, signal?: AbortSignal): Promise<void> =>
+  reefFetch(`/api/reef/sets/${id}/documents/${encodeURIComponent(doc)}/`, {
+    method: 'DELETE',
+    auth: 'required',
+    signal
+  })
+
+// Update a set's title and/or description. PATCH rather than PUT: `documents` is read-only, so a
+// PUT body would have to carry it right back unchanged just to change these two fields.
+export const patchSet = (id: string, set: PatchedDocumentSet, signal?: AbortSignal): Promise<DocumentSet> =>
+  reefFetch(`/api/reef/sets/${id}/`, { method: 'PATCH', body: set, auth: 'required', signal })
+
+// Delete a set outright, along with its membership. Answers 204.
+export const deleteSet = (id: string, signal?: AbortSignal): Promise<void> =>
+  reefFetch(`/api/reef/sets/${id}/`, { method: 'DELETE', auth: 'required', signal })
+
+// --- Surveys (management; staff only, used by the builder) -------------------------------
+
+export const getSurveys = (signal?: AbortSignal): Promise<Survey[]> =>
+  reefFetch('/api/reef/surveys/', { auth: 'required', signal })
+
+// id, created_at and updated_at are server-assigned.
+export const createSurvey = (
+  survey: Omit<Survey, 'id' | 'created_at' | 'updated_at'>,
+  signal?: AbortSignal
+): Promise<Survey> => reefFetch('/api/reef/surveys/', { method: 'POST', body: survey, auth: 'required', signal })
+
+export const getSurvey = (id: number, signal?: AbortSignal): Promise<Survey> =>
+  reefFetch(`/api/reef/surveys/${id}/`, { auth: 'required', signal })
+
+export const updateSurvey = (
+  id: number,
+  survey: Omit<Survey, 'id' | 'created_at' | 'updated_at'>,
+  signal?: AbortSignal
+): Promise<Survey> => reefFetch(`/api/reef/surveys/${id}/`, { method: 'PUT', body: survey, auth: 'required', signal })
+
+export const patchSurvey = (id: number, survey: PatchedSurvey, signal?: AbortSignal): Promise<Survey> =>
+  reefFetch(`/api/reef/surveys/${id}/`, { method: 'PATCH', body: survey, auth: 'required', signal })
+
+export const deleteSurvey = (id: number, signal?: AbortSignal): Promise<void> =>
+  reefFetch(`/api/reef/surveys/${id}/`, { method: 'DELETE', auth: 'required', signal })
+
+// Aggregated responses for one survey. The spec types the payload as a free-form object.
+export const getSurveyResults = (id: number, signal?: AbortSignal): Promise<SurveyResults> =>
+  reefFetch(`/api/reef/surveys/${id}/results/`, { auth: 'required', signal })
+
+// --- Surveys (runner; keyed by slug) ----------------------------------------------------
+
+// Definition and theme for the runner. Anonymous for open surveys, so the token is sent
+// only to unlock the ones whose visibility is authenticated.
+export const getSurveyDefinition = (slug: string, signal?: AbortSignal): Promise<SurveyDefinition> =>
+  reefFetch(`/api/reef/surveys/${encodeURIComponent(slug)}/definition/`, {
+    auth: 'optional',
+    signal
+  })
+
+export const createSurveyResponse = (
+  slug: string,
+  response: ResponseCreate,
+  signal?: AbortSignal
+): Promise<ResponseCreate> =>
+  reefFetch(`/api/reef/surveys/${encodeURIComponent(slug)}/responses/`, {
+    method: 'POST',
+    body: response,
+    auth: 'optional',
+    signal
+  })
+
+// Surveys currently open to the caller — the list Red uses for its survey popover.
+export const getOpenSurveys = (signal?: AbortSignal): Promise<OpenSurvey[]> =>
+  reefFetch('/api/reef/surveys/open/', { auth: 'optional', signal })
+
+// --- Notifications (this reader's own feed) -----------------------------------------------
+
+// One page of the caller's own notification feed, newest first. `cursor` is `next` (or
+// `previous`) off a page already read, not one built by hand — it's an opaque cursor value, not an
+// offset, so ~/stores/reef-notifications is what keeps it rather than a caller trying to construct
+// one.
+export const getNotifications = (cursor?: string, signal?: AbortSignal): Promise<PaginatedWebNotificationList> =>
+  reefFetch(
+    cursor === undefined ? '/api/reef/notifications/' : `/api/reef/notifications/?cursor=${encodeURIComponent(cursor)}`,
+    { auth: 'required', signal }
+  )
+
+// Mark one of the caller's own notifications read, returning the updated row. The spec calls it
+// idempotent, so a notification already read is a success rather than an error.
+export const markNotificationRead = (id: number, signal?: AbortSignal): Promise<WebNotification> =>
+  reefFetch(`/api/reef/notifications/${id}/read/`, { method: 'POST', auth: 'required', signal })
+
+// Mark every one of the caller's own notifications read, in one call. Idempotent like the
+// single-notification operation above.
+export const markAllNotificationsRead = (signal?: AbortSignal): Promise<void> =>
+  reefFetch('/api/reef/notifications/read/', { method: 'PUT', auth: 'required', signal })
+
+// --- Digest email preference (this reader's own) -------------------------------------------
+
+// Whether the caller receives Reef's subscription digest by mail. One preference per account —
+// there's no id or per-subscription row, so unlike the operations above there's nothing to key
+// this by beyond the caller themselves.
+export const getDigestPreference = (signal?: AbortSignal): Promise<DigestPreference> =>
+  reefFetch('/api/reef/digest-preference/', { auth: 'required', signal })
+
+export const patchDigestPreference = (
+  preference: PatchedDigestPreference,
+  signal?: AbortSignal
+): Promise<DigestPreference> =>
+  reefFetch('/api/reef/digest-preference/', { method: 'PATCH', body: preference, auth: 'required', signal })

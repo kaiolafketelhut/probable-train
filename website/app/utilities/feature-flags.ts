@@ -1,0 +1,220 @@
+import { z } from 'zod'
+import { type Ref } from 'vue'
+import { SEARCH_PATH } from './url'
+
+export const FeatureFlagsSchema = z.object({
+  // Ensure all top-level fields are optional so that browsers
+  // with old versions saved in localStorage values can still validate
+  isDidYouMeanActive: z.boolean().optional(),
+  isAbnfDiagramsActive: z.boolean().optional(),
+  searchObsoletedDefaults: z.boolean().optional(),
+  hasTextScale: z.boolean().optional(),
+  hasWordBreakMode: z.boolean().optional(),
+  hasReadingMode: z.boolean().optional(),
+  hasCollapsibleSidebar: z.boolean().optional()
+})
+
+// this is commented out until next time we need a string union value in feature flags.
+// string union feature flag values being optional is difficult to model in TS
+// so we'll use a JS falsey value so that Boolean() can evaluate as false
+// const ENUM_STRING_UNDEFINED = z.literal('')
+
+export type FeatureFlags = z.infer<typeof FeatureFlagsSchema>
+
+export const featureFlagsKey = Symbol() as InjectionKey<Ref<FeatureFlags>>
+
+export const hasFeatureFlagsLoadedKey = Symbol() as InjectionKey<Ref<boolean>>
+
+export type FeatureFlagUIRow = {
+  title: string
+  description?: string
+  storageType: 'boolean' | string[]
+}
+
+const featureFlagsUI: Record<keyof FeatureFlags, FeatureFlagUIRow> = {
+  hasTextScale: {
+    title: 'Text scaling option',
+    description: 'Text scaling affects line spacing, letter spacing, word spacing, and spacing after paragraphs.',
+    storageType: 'boolean'
+  },
+  hasWordBreakMode: {
+    title: 'Word breaking preference',
+    description:
+      "Adds a UI setting choosing how long words and URLs in RFC documents break: the inserted break points, or one of the browser's own strategies.",
+    storageType: 'boolean'
+  },
+  hasReadingMode: {
+    title: 'RFC reading mode',
+    description:
+      'Adds a play button before an RFC that reads it aloud with the browser speech synthesis, highlighting the text as it goes. Click the text to move where it reads from. Voice, rate and whether to read diagrams are in the advanced UI settings.',
+    storageType: 'boolean'
+  },
+  hasCollapsibleSidebar: {
+    title: 'Collapsible sidebar',
+    description: 'Adds a button on the edge of the RFC sidebar for collapsing it.',
+    storageType: 'boolean'
+  },
+  isDidYouMeanActive: {
+    title: 'Homepage direct RFC/subseries links',
+    description: `Homepage search box feature suggesting direct links to RFCs/BCPs/etc when typing "RFCn" or "BCP n" etc into the homepage search box. This only occurs on the homepage, not on the ${SEARCH_PATH} route.`,
+    storageType: 'boolean'
+  },
+  isAbnfDiagramsActive: {
+    title: 'ABNF railroad diagrams',
+    description: `Renders ABNF grammar blocks in RFC documents as interactive railroad diagrams, making protocol grammars easier to read at a glance.`,
+    storageType: 'boolean'
+  },
+  searchObsoletedDefaults: {
+    title: 'Search default filter includes obsoleted',
+    description: 'On the search route include obsoleted results by default',
+    storageType: 'boolean'
+  }
+}
+
+export const DEFAULT_FEATURE_FLAGS: Required<FeatureFlags> = {
+  hasTextScale: false,
+  hasWordBreakMode: false,
+  hasReadingMode: false,
+  hasCollapsibleSidebar: false,
+  isDidYouMeanActive: false,
+  isAbnfDiagramsActive: false,
+  searchObsoletedDefaults: false
+}
+
+export const featureFlagsUIRows = Object.entries(featureFlagsUI)
+
+export type WatchInputForFeatureFlagExperimentsProps = {
+  inputValueRef: Ref<string>
+  isFeatureFlagsModalVisibleRef: Ref<boolean>
+}
+
+export const LOCALSTORAGE_KEY = 'feature-flag-experiments'
+
+export const loadFeatureFlagsFromLocalStorage = (
+  hasFeatureFlagsLoadedKey: Ref<boolean>,
+  featureFlagsRef: Ref<FeatureFlags>
+) => {
+  hasFeatureFlagsLoadedKey.value = true
+  try {
+    const valString = window.localStorage.getItem(LOCALSTORAGE_KEY)
+    if (!valString) {
+      // no value in local storage
+      return
+    }
+    const val = JSON.parse(valString)
+    const { data, error } = FeatureFlagsSchema.safeParse(val)
+    if (error || !data) {
+      const errorTitle = 'Unable to validate feature flag JSON. Resetting localStorage config.'
+      console.log(errorTitle, valString)
+      window.localStorage.removeItem(LOCALSTORAGE_KEY)
+      throw Error(errorTitle)
+    }
+    featureFlagsRef.value = {
+      // merge current value as default data so that all keys will be present
+      ...featureFlagsRef.value,
+      ...data
+    }
+  } catch {
+    // Reading throws when localStorage is disabled, which is expected
+  }
+}
+
+const ENABLE_FEATURE_FLAGS_INPUT_VALUE = '//feature-flag-experiments'
+
+export const watchInputForFeatureFlagExperiments = ({
+  inputValueRef,
+  isFeatureFlagsModalVisibleRef
+}: WatchInputForFeatureFlagExperimentsProps): void => {
+  watch(inputValueRef, () => {
+    const { value } = inputValueRef
+    if (value.trim() === ENABLE_FEATURE_FLAGS_INPUT_VALUE) {
+      console.log('Opening feature flag experiments modal')
+      isFeatureFlagsModalVisibleRef.value = true
+    }
+  })
+}
+
+export const isFeatureFlagsModalVisibleKey = Symbol() as InjectionKey<Ref<boolean>>
+
+// Owned by app.vue rather than the toast component: the toast is rendered inside <NuxtLayout>'s
+// slot content, which is re-parented into a fresh layout instance (and so unmounted/remounted)
+// whenever navigation switches layouts, same as the notifications store's timers had to avoid
+// depending on a component's lifecycle for the same reason. Keeping "has this been dismissed"
+// here instead of as component-local state means it survives that remount.
+export const hasFeatureFlagsToastBeenDismissedKey = Symbol() as InjectionKey<Ref<boolean>>
+
+export const useFeatureFlags = () => {
+  const featureFlagsRef = inject(featureFlagsKey)
+
+  if (!featureFlagsRef) {
+    throw Error('Expected provide(featureFlagsKey) above in component tree.')
+  }
+
+  watch(
+    () => featureFlagsRef?.value ?? undefined,
+    () => {
+      if (!featureFlagsRef) {
+        throw Error('Expected inject(featureFlagsKey) to be available')
+      }
+      try {
+        // localStorage APIs can throw Errors if browser storage is disabled or storage is full etc
+        window.localStorage.setItem(LOCALSTORAGE_KEY, JSON.stringify(featureFlagsRef.value))
+      } catch (e: unknown) {
+        console.log(
+          `[feature-flag-experiments]  Error saving config to localStorage (this is expected behaviour if browser localStorage is disabled or full)`,
+          e
+        )
+      }
+    }
+  )
+
+  return featureFlagsRef
+}
+
+export const useHasFeatureFlagsLoaded = (): Ref<boolean> => {
+  const hasFeatureFlagsLoadedRef = inject(hasFeatureFlagsLoadedKey)
+
+  if (!hasFeatureFlagsLoadedRef) {
+    throw Error('Expected provide(hasFeatureFlagsLoadedKey) above in component tree.')
+  }
+
+  return hasFeatureFlagsLoadedRef
+}
+
+export const calculateIfFeatureFlagsAreEnabled = (featureFlags: FeatureFlags): boolean => {
+  const entries = Object.entries(featureFlags)
+  console.log(entries)
+  const isEnabled = entries.reduce((acc, [_key, value]) => (acc ? acc : Boolean(value)), false)
+  return isEnabled
+}
+
+export const useAreFeatureFlagsEnabled = () => {
+  const featureFlagsRef = inject(featureFlagsKey)
+  const isMounted = ref(false)
+  onMounted(() => {
+    isMounted.value = true
+  })
+  onUnmounted(() => {
+    isMounted.value = false
+  })
+
+  if (!featureFlagsRef) {
+    console.warn('Expected provide(featureFlagsKey) above in component tree.')
+  }
+
+  const areFeatureFlagsEnabled = computed(() => {
+    const featureFlags = featureFlagsRef?.value
+    if (!featureFlags) {
+      console.warn('Expected provide(featureFlagsKey) above in component tree.')
+      return false
+    }
+    // Do nothing in server renders
+    if (isMounted.value === false) {
+      return false
+    }
+
+    return calculateIfFeatureFlagsAreEnabled(featureFlags)
+  })
+
+  return areFeatureFlagsEnabled
+}

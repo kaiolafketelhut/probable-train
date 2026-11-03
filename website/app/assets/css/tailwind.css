@@ -1,0 +1,429 @@
+@import 'tailwindcss';
+@source inline('text-blue-100 dark:text-blue-50 dark:text-blue-100 text-blue-300 dark:text-blue-300 color-blue-50 color-blue-100 color-blue-300');
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@utility rfc-container {
+  @apply container;
+  @variant lg {
+    max-width: 1024px;
+  }
+  @variant xl {
+    max-width: 1160px;
+  }
+  @variant 2xl {
+    max-width: 1160px;
+  }
+}
+
+@utility search-container {
+  @apply container;
+  @variant lg {
+    max-width: 1024px;
+  }
+  @variant xl {
+    max-width: 1160px;
+  }
+  @variant 2xl {
+    max-width: 1160px;
+  }
+}
+
+@theme {
+  --font-sans: 'Inter', sans-serif;
+
+  --sidebar-width: 400px;
+  --info-rfc-sidebar-buffer: 10px;
+
+  /**
+   * WCAG requires max-width of 80 chars.
+   * We attempt to meet this requirement through a container width.
+   * It's always a fuzzy constraint because variable-width fonts,
+   * boldness, etc, will have a different number of characters per
+   * line, so this can only be expected to be an approximate value.
+   **/
+  --max-text-block-width: 42rem;
+
+  --text-5xl: 2.75rem;
+  --text-2xl: 1.375rem;
+
+  --color-yellow-50: #ffff99;
+  --color-blue-25: #d3e3ff;
+  --color-blue-50: #b3b3ff;
+  --color-blue-100: #3cc0fd;
+  --color-blue-150: #2222ee;
+  --color-blue-200: #0b8cc5;
+  --color-blue-300: #1c62b6;
+  --color-blue-400: #18539b;
+  --color-blue-850: #001d2c;
+  --color-blue-900: #002d3c;
+  --color-blue-950: #00101c;
+  --color-blue-975: #00070f;
+  --color-yellow-100: #ffee66;
+  --color-yellow-200: #ffe459;
+  --color-yellow-400: #ffd13e;
+  --color-yellow-500: #e2b72a;
+  --color-yellow-600: #c49c15;
+  --color-yellow-750: #a78201;
+  --color-yellow-975: #211002;
+
+  --animate-wiggle: wiggle 1s ease-in-out infinite;
+  --animate-scaleIn: scaleIn 200ms ease;
+  --animate-scaleOut: scaleOut 200ms ease;
+  --animate-fadeIn: fadeIn 200ms ease;
+  --animate-fadeOut: fadeOut 200ms ease;
+  --animate-enterFromLeft: enterFromLeft 250ms ease;
+  --animate-enterFromRight: enterFromRight 250ms ease;
+  --animate-enterFromBottom: enterFromBottom 250ms ease;
+  --animate-exitToLeft: exitToLeft 250ms ease;
+  --animate-exitToRight: exitToRight 250ms ease;
+  --animate-exitToBottom: exitToBottom 250ms ease;
+  --animate-slideDown: slideDown 300ms cubic-bezier(0.87, 0, 0.13, 1);
+  --animate-slideUp: slideUp 300ms cubic-bezier(0.87, 0, 0.13, 1);
+  --animate-slideDownAndFade: slideDownAndFade 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slideLeftAndFade: slideLeftAndFade 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slideUpAndFade: slideUpAndFade 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slideRightAndFade: slideRightAndFade 200ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  --shadow-3xl:
+    0 1px 1px hsl(0deg 0% 0% / 0.075), 0 2px 2px hsl(0deg 0% 0% / 0.075), 0 4px 4px hsl(0deg 0% 0% / 0.075),
+    0 8px 8px hsl(0deg 0% 0% / 0.075), 0 16px 16px hsl(0deg 0% 0% / 0.075);
+
+  @keyframes enterFromRight {
+    0% {
+      opacity: 0;
+      transform: translateX(200px);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes enterFromLeft {
+    0% {
+      opacity: 0;
+      transform: translateX(-200px);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes enterFromBottom {
+    0% {
+      opacity: 0;
+      transform: translateY(200px);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes exitToRight {
+    0% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    100% {
+      opacity: 0;
+      transform: translateX(200px);
+    }
+  }
+
+  @keyframes exitToLeft {
+    0% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    100% {
+      opacity: 0;
+      transform: translateX(-200px);
+    }
+  }
+
+  @keyframes exitToBottom {
+    0% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    100% {
+      opacity: 0;
+      transform: translateY(200px);
+    }
+  }
+
+  @keyframes scaleIn {
+    0% {
+      opacity: 0;
+      transform: rotateX(-10deg) scale(0.9);
+    }
+
+    100% {
+      opacity: 1;
+      transform: rotateX(0deg) scale(1);
+    }
+  }
+
+  @keyframes scaleOut {
+    0% {
+      opacity: 1;
+      transform: rotateX(0deg) scale(1);
+    }
+
+    100% {
+      opacity: 0;
+      transform: rotateX(-10deg) scale(0.95);
+    }
+  }
+
+  @keyframes fadeIn {
+    0% {
+      opacity: 0;
+    }
+
+    100% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fadeOut {
+    0% {
+      opacity: 1;
+    }
+
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes slideDown {
+    0% {
+      height: 0;
+    }
+    100% {
+      height: var(--reka-accordion-content-height);
+    }
+  }
+
+  @keyframes slideUp {
+    0% {
+      height: var(--reka-accordion-content-height);
+    }
+
+    100% {
+      height: 0;
+    }
+  }
+
+  @keyframes slideDownAndFade {
+    0% {
+      opacity: 0;
+      transform: translateY(-5px);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideLeftAndFade {
+    0% {
+      opacity: 0;
+      transform: translateX(5px);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slideUpAndFade {
+    0% {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideRightAndFade {
+    0% {
+      opacity: 0;
+      transform: translateX(-5px);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+}
+
+@layer base {
+  body,
+  #__nuxt {
+    min-height: 100vh;
+  }
+
+  a {
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+
+    abbr {
+      text-decoration: underline;
+    }
+  }
+}
+
+html {
+  background: var(--color-gray-100);
+  color: var(--color-black);
+}
+
+html.dark {
+  background: var(--color-blue-975);
+  color: var(--color-white);
+}
+
+html.dark::selection {
+  color: white;
+  background: var(--color-blue-600);
+}
+
+/*
+  Where a reader's own words were found. Styled here rather than left to the browser, whose default
+  sets a yellow background and leaves the text colour inherited — which in dark mode is light text
+  on light yellow.
+
+  One rule for both themes, because both halves are stated: the marker metaphor reads the same on a
+  dark page, and a highlight that dimmed to suit the surrounding page would be working against what
+  it is for. Bold as well as coloured, since the highlight carries information and a reader who
+  cannot pick the background out of the page around it would otherwise be told nothing (WCAG 1.4.1).
+*/
+mark {
+  background: var(--color-yellow-200);
+  color: var(--color-black);
+  font-weight: 600;
+  border-radius: 0.125rem;
+  padding-inline: 0.1em;
+}
+
+@media (forced-colors: active) {
+  /*
+    Forced colours drops backgrounds, which would take the highlight with it. The system highlight
+    pair is guaranteed to contrast against itself, and the underline says the same thing again for
+    anyone whose palette makes the two backgrounds hard to tell apart.
+  */
+  mark {
+    background: Highlight;
+    color: HighlightText;
+    text-decoration: underline;
+  }
+}
+
+/*
+  Reading mode (CSS Custom Highlight API): the sentence being read, and inside it the word. Both are
+  registered from script without touching the document's DOM. A highlight pseudo-element accepts only
+  colour, background and text decoration, so the word is told apart from the sentence by an underline
+  as well as a stronger colour (WCAG 1.4.1), not by weight.
+*/
+:root {
+  --reading-sentence-background: var(--color-blue-25);
+  --reading-sentence-color: var(--color-black);
+  --reading-word-background: var(--color-yellow-200);
+  --reading-word-color: var(--color-black);
+}
+
+html.dark {
+  --reading-sentence-background: var(--color-blue-400);
+  --reading-sentence-color: var(--color-white);
+  --reading-word-background: var(--color-yellow-200);
+  --reading-word-color: var(--color-black);
+}
+
+::highlight(rfc-reading-sentence) {
+  background-color: var(--reading-sentence-background);
+  color: var(--reading-sentence-color);
+}
+
+::highlight(rfc-reading-word) {
+  background-color: var(--reading-word-background);
+  color: var(--reading-word-color);
+  text-decoration: underline;
+}
+
+@media (forced-colors: active) {
+  ::highlight(rfc-reading-sentence) {
+    background-color: Canvas;
+    color: CanvasText;
+    text-decoration: underline dotted;
+  }
+
+  ::highlight(rfc-reading-word) {
+    background-color: Highlight;
+    color: HighlightText;
+  }
+}
+
+.print-with-background {
+  /* Browsers drop backgrounds when printing; this forces them to print. Use sparingly. */
+  -webkit-print-color-adjust: exact !important;
+}
+
+.text-bold-without-layout-shift {
+  /*
+    AKA fake bold.
+
+    This is an alternative to real bold that doesn't cause reflow,
+    so that elements can be toggled bold without causing a distracting reflow.
+
+    Bold reflow could cause enough width to cause an additional line break, causing
+    significant jitter as text is bolded. Sometimes we want to avoid that.
+
+    Arguably the CSS properties chosen cause poor text rendering, however sometimes
+    this is worse than UX jitters, so we want text bold without layout shift.
+    
+    Our options    
+    1)  Using CSS property `text-shadow` to make it look bold. eg,
+          text-shadow: -0.5px -0.5px 0.5px currentColor;
+    2)  Preallocating layout space for bold like
+        https://css-tricks.com/bold-on-hover-without-the-layout-shift/ 
+        succesfully prevents one TOC item from affecting the layout of the next,
+        but that only works for particular layouts (eg horizontal) where
+        preallocating an extra empty line of text for the bold version wouldn't
+        look odd, but in a vertical list of TOC items then having some have extra
+        whitespace between them does look odd so we really can't preallocate space.
+    3)  using a specific font that doesn't vary width by boldness, which isn't per
+        the design.
+    4)  using `-webkit-text-stroke`
+
+    So this is the least worst approach until a better one comes along.
+   */
+  -webkit-text-stroke-width: 0.7px;
+}
+
+.wrap-anywhere {
+  overflow-wrap: anywhere;
+}
+
+.wrap-normal {
+  overflow-wrap: normal;
+}
+
+.font-feature-settings-calt-off {
+  font-feature-settings: 'calt' off;
+}

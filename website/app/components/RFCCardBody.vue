@@ -1,0 +1,137 @@
+<template>
+  <div class="md:pr-5 flex-1">
+    <RFCCardBodyPill :rfc="rfc" />
+    <ul
+      v-if="props.rfc.authors"
+      class="relative z-1 hidden lg:block print:block text-base text-gray-800 dark:text-white">
+      <li v-for="(author, index) in props.rfc.authors" :key="index" class="inline">
+        <GraphicsDiamond v-if="index > 0" />
+        <RFCDocumentAuthor :author="author" />
+      </li>
+    </ul>
+    <ul v-if="list2" class="relative z-1 hidden lg:block print:block text-base text-gray-800 mt-1 dark:text-white">
+      <li v-if="isAprilFool" class="inline pr-2">
+        <AprilFools />
+      </li>
+      <li v-for="(part, index) in list2" :key="index" class="inline text-[0.9rem] text-slate-600 dark:text-slate-200">
+        <GraphicsDiamond v-if="index > 0" class="align-middle" />{{ part }}
+      </li>
+    </ul>
+    <template v-if="props.showAbstract && props.rfc.abstract">
+      <!-- mobile abstract -->
+      <div class="block lg:hidden">
+        <button
+          type="button"
+          :aria-expanded="isMobileAbstractOpen"
+          :aria-controls="abstractDomId"
+          class="relative z-50 text-blue-800 cursor-pointer dark:text-blue-100 underline text-base p-3 -ml-3 -mt-2 -mb-3 print:hidden"
+          @click="isMobileAbstractOpen = !isMobileAbstractOpen"
+          :aria-label="
+            isMobileAbstractOpen
+              ? `Hide abstract for RFC ${props.rfc.number}`
+              : `Show abstract for RFC ${props.rfc.number}`
+          ">
+          <template v-if="isMobileAbstractOpen">Hide abstract</template>
+          <template v-else>Show abstract</template>
+        </button>
+        <div
+          :id="abstractDomId"
+          :class="[
+            'relative z-50 mt-3',
+            {
+              'block ': isMobileAbstractOpen,
+              'hidden print:block': !isMobileAbstractOpen
+            }
+          ]">
+          <Heading level="4" style-level="5" class="text-blue-900 dark:text-gray-300 pt-3 border-t inline-block">
+            Abstract
+          </Heading>
+          <div v-if="props.rfc.abstract" class="leading-snug text-gray-800 dark:text-gray-300 text-pretty">
+            <p v-for="(line, index) in props.rfc.abstract.split('\n')" :key="index">{{ line }}</p>
+          </div>
+        </div>
+      </div>
+    </template>
+    <p
+      v-if="obsoletedBy"
+      :class="[
+        'relative z-1 text-red-800 dark:text-red-300 text-base print:text-black',
+        { 'mt-2': isMobileAbstractOpen }
+      ]">
+      <Renderable :val="obsoletedBy" />
+    </p>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { DateTime } from 'luxon'
+import { infoSeriesPathBuilder } from '../utilities/url'
+import { isAprilFoolsRfc, type RfcCommon } from '~/utilities/rfc'
+import { formatTitlePlaintext } from '~/utilities/rfc-converters-utils'
+
+type Props = {
+  rfc: RfcCommon
+  showAbstract?: boolean
+  showTagDate?: boolean
+}
+
+const props = defineProps<Props>()
+
+const isMobileAbstractOpen = ref<boolean>(false)
+
+const abstractDomId = computed(() => `abstract-rfc-${props.rfc.number}`)
+
+function formatDate(isoDate: string): string {
+  const datetime = DateTime.fromISO(isoDate)
+  return datetime.toLocaleString({
+    month: 'long',
+    year: 'numeric',
+    ...(isAprilFool.value && { day: 'numeric' })
+  })
+}
+
+function formatObsoletedBy(obsoletedBy: RfcCommon['obsoleted_by']): VNode | undefined {
+  if (!obsoletedBy || obsoletedBy.length === 0) return undefined
+
+  return h(
+    'ul',
+    { class: 'inline-block' },
+    obsoletedBy.reduce(
+      (acc, obsoletedByItem, index) => {
+        if (index > 0) {
+          acc.push(', ')
+        }
+        acc.push(h('span', { class: 'inline-block p-1 -m-1' }, ['RFC ', h('b', obsoletedByItem.number)]))
+
+        return acc
+      },
+      ['Obsoleted by '] as (string | VNode)[]
+    )
+  )
+}
+
+const obsoletedBy = computed(() => {
+  return formatObsoletedBy(props.rfc.obsoleted_by)
+})
+
+const list2 = computed(
+  () =>
+    [
+      props.rfc.published ? formatDate(props.rfc.published) : undefined,
+      props.rfc.stream?.name && formatStreamName(props.rfc.stream.name),
+      props.rfc.area?.name
+    ].filter(Boolean) as string[]
+)
+
+const formatStreamName = (streamName: string) => {
+  switch (streamName.toLowerCase()) {
+    case 'ise':
+    case 'independent':
+    case 'independent submission':
+      return 'Independent Submission'
+  }
+  return `${streamName} publication`
+}
+
+const isAprilFool = computed(() => isAprilFoolsRfc(props.rfc))
+</script>

@@ -1,0 +1,2428 @@
+openapi: 3.0.3
+info:
+  title: Reef
+  version: 0.1.0
+  description: Backend API for the Reef survey and engagement service
+paths:
+  /api/reef/digest-preference/:
+    get:
+      operationId: digest_preference_retrieve
+      description: |-
+        Read or set whether the caller receives the subscription digest by mail.
+
+        Always the caller's own account: there is nothing else this could name.
+      tags:
+        - digest-preference
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DigestPreference'
+          description: ''
+    put:
+      operationId: digest_preference_update
+      description: |-
+        Read or set whether the caller receives the subscription digest by mail.
+
+        Always the caller's own account: there is nothing else this could name.
+      tags:
+        - digest-preference
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DigestPreference'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DigestPreference'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DigestPreference'
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DigestPreference'
+          description: ''
+    patch:
+      operationId: digest_preference_partial_update
+      description: |-
+        Read or set whether the caller receives the subscription digest by mail.
+
+        Always the caller's own account: there is nothing else this could name.
+      tags:
+        - digest-preference
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDigestPreference'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDigestPreference'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDigestPreference'
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DigestPreference'
+          description: ''
+  /api/reef/me/documents/:
+    get:
+      operationId: me_documents_retrieve
+      description: |-
+        Return the authenticated caller's rating, subscription and set membership for each named document, along with the caller's own sets. One call for a whole page of documents.
+
+        `doc` is repeatable and identifiers are canonicalized, so `rfc9110` and `RFC 9110` address the same document; the series has to be named, so `9110` on its own is rejected. A named document is always returned, with nulls if the caller has no state for it. At most 100 documents per request.
+
+        Naming no document returns the caller's sets and an empty `documents` list, which is how a client loads the set list on its own. Unlike `/stats/`, an empty `doc` does not mean every document: that endpoint is swept once at build time, whereas this one is called on every page.
+
+        Carries no public numbers. Subscriber counts and set counts are the same for every visitor and are served by `/stats/`.
+      summary: Read your own state for a batch of documents
+      parameters:
+        - in: query
+          name: doc
+          schema:
+            type: array
+            items:
+              type: string
+          description: 'Document identifier, repeatable, at most 100 per request. The
+            series must be named: rfc9110, bcp14, std66.'
+      tags:
+        - me
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyDocuments'
+          description: ''
+  /api/reef/me/ratings/:
+    get:
+      operationId: me_ratings_list
+      description: Return every document the authenticated caller has rated, with
+        their 1-5 `value` and when it was last set, most recently changed first. Requires
+        a credential. Unpaginated. A caller who has rated nothing gets an empty list.
+      summary: List your own ratings
+      tags:
+        - me
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MyRating'
+          description: ''
+  /api/reef/notifications/:
+    get:
+      operationId: notifications_list
+      description: The caller's own notification feed, newest first.
+      parameters:
+        - name: cursor
+          required: false
+          in: query
+          description: The pagination cursor value.
+          schema:
+            type: string
+      tags:
+        - notifications
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedWebNotificationList'
+          description: ''
+  /api/reef/notifications/{id}/read/:
+    post:
+      operationId: notifications_read_create
+      description: |-
+        Mark one of the caller's own notifications read.
+
+        Idempotent: a notification already read stays read rather than erroring.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+      tags:
+        - notifications
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebNotification'
+          description: ''
+  /api/reef/notifications/read/:
+    put:
+      operationId: notifications_read_update
+      description: |-
+        Mark every one of the caller's own notifications read.
+
+        Idempotent: with nothing unread it changes nothing and still succeeds.
+      tags:
+        - notifications
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/reef/popularity/:
+    get:
+      operationId: popularity_list
+      description: 'Every RFC with a popularity score, most popular first. `popularity`
+        is a rank percentile in [0, 1]: 1 is the most popular ranked document and
+        0 the least, and only ordering is expressed, never traffic. An RFC without
+        an entry has not been ranked. `computed_at` is when the ranking was last recomputed,
+        null while it is empty.'
+      summary: The popularity ranking
+      tags:
+        - popularity
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+        - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Popularity'
+          description: ''
+  /api/reef/precomputed/subjects/:
+    get:
+      operationId: precomputed_subject_index_retrieve
+      description: |-
+        Not a served endpoint. This describes the payload the precomputer publishes to `subjects.json` in the blob store, which is where Red reads it from; no deployment routes this path.
+
+        It is the vocabulary as a tree with every assignment and every document title, in one file, so that a caller renders the subject listing from a single fetch. Two keyed maps: `subjects` by slug in tree order, and `documents` by identifier, referenced from the entries rather than repeated beside each subject that covers the document. A document's fuller metadata -- status, authors, abstract and the rest -- is on its own subject's file, not repeated here for every subject that covers it.
+
+        Retired subjects and aliases are absent: they are not offered, and the per-subject files are what answer for them.
+      summary: The published subject index
+      tags:
+        - precomputed
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+        - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubjectIndex'
+          description: ''
+  /api/reef/precomputed/subjects/{slug}/:
+    get:
+      operationId: precomputed_subject_detail_retrieve
+      description: |-
+        Not a served endpoint. This describes the payload the precomputer publishes to `subjects/<slug>.json` in the blob store; no deployment routes this path.
+
+        One file per subject, which is what lets a subject page in Red be a single fetch. It is the served `/api/reef/subjects/{slug}/` response plus `document_meta`, Red's own metadata for each document assigned here, and `subject_meta`, every ancestor up to the root and every descendant through this subject's whole branch -- not siblings -- so that a page can draw a breadcrumb or a nested listing without a second fetch for the rest of the vocabulary.
+
+        A retired subject and an alias are published here too, as the same redirect stubs the served read returns, because a blob store cannot answer with a 301. Neither carries `documents`, so neither gains the two maps.
+      summary: A published subject file
+      parameters:
+        - in: path
+          name: slug
+          schema:
+            type: string
+          required: true
+      tags:
+        - precomputed
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+        - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrecomputedSubjectDetailOrRedirect'
+          description: ''
+  /api/reef/precomputed/surveys/:
+    get:
+      operationId: precomputed_survey_list_retrieve
+      description: |-
+        Not a served endpoint. This describes the payload the precomputer publishes to `surveys/published.json` in the blob store, which is where Red reads it from; no deployment routes this path.
+
+        Every published survey, whatever its visibility, so that Red can decide what to offer a signed-in reader without a call to the API. `visibility` is the field that decides: offer an `authenticated` row only to a reader who is signed in, since the runner refuses an anonymous visitor and the survey's definition is not published for them either.
+
+        `surveys/open.json` is the subset an anonymous reader may be offered, and is what the served `/api/reef/surveys/open/` returns without a credential. Unlike that endpoint with one, this file cannot leave out a survey the reader has already answered: it is one payload for every reader.
+      summary: The published survey list
+      tags:
+        - precomputed
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+        - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OpenSurvey'
+          description: ''
+  /api/reef/ratings/{rfc}/:
+    get:
+      operationId: ratings_retrieve
+      description: |-
+        Return the caller's own 1-5 rating of one RFC as `your_rating`, which is null if they have not rated it; for an anonymous caller it is always null. Open to anonymous callers. Ratings of an RFC are not published as an average or a count.
+
+        The identifier is canonicalized, so `9110`, `rfc9110` and `RFC 9110` all address the same document.
+      summary: Read an RFC's rating
+      parameters:
+        - in: path
+          name: rfc
+          schema:
+            type: string
+          required: true
+      tags:
+        - ratings
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+        - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RatingAggregate'
+          description: ''
+    put:
+      operationId: ratings_update
+      description: Record the authenticated caller's 1-5 rating of one RFC, replacing
+        their previous rating of it if there is one. Requires a credential. Returns
+        the same body as GET, with `your_rating` echoing the value just set.
+      summary: Set the caller's rating of an RFC
+      parameters:
+        - in: path
+          name: rfc
+          schema:
+            type: string
+          required: true
+      tags:
+        - ratings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RatingWrite'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RatingWrite'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RatingWrite'
+        required: true
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RatingAggregate'
+          description: ''
+    delete:
+      operationId: ratings_destroy
+      description: "Remove the authenticated caller's rating of one RFC, so it no
+        longer holds a rating. Requires a credential. Idempotent: a caller who has
+        not rated this RFC gets the same response as one whose rating was just removed.
+        Returns the same body as GET, with `your_rating` now null."
+      summary: Withdraw the caller's rating of an RFC
+      parameters:
+        - in: path
+          name: rfc
+          schema:
+            type: string
+          required: true
+      tags:
+        - ratings
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RatingAggregate'
+          description: ''
+  /api/reef/schema/:
+    get:
+      operationId: schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+        - in: query
+          name: format
+          schema:
+            type: string
+            enum:
+              - json
+              - yaml
+        - in: query
+          name: lang
+          schema:
+            type: string
+            enum:
+              - af
+              - ar
+              - ar-dz
+              - ast
+              - az
+              - be
+              - bg
+              - bn
+              - br
+              - bs
+              - ca
+              - ckb
+              - cs
+              - cy
+              - da
+              - de
+              - dsb
+              - el
+              - en
+              - en-au
+              - en-gb
+              - eo
+              - es
+              - es-ar
+              - es-co
+              - es-mx
+              - es-ni
+              - es-ve
+              - et
+              - eu
+              - fa
+              - fi
+              - fr
+              - fy
+              - ga
+              - gd
+              - gl
+              - he
+              - hi
+              - hr
+              - hsb
+              - hu
+              - hy
+              - ia
+              - id
+              - ig
+              - io
+              - is
+              - it
+              - ja
+              - ka
+              - kab
+              - kk
+              - km
+              - kn
+              - ko
+              - ky
+              - lb
+              - lt
+              - lv
+              - mk
+              - ml
+              - mn
+              - mr
+              - ms
+              - my
+              - nb
+              - ne
+              - nl
+              - nn
+              - os
+              - pa
+              - pl
+              - pt
+              - pt-br
+              - ro
+              - ru
+              - sk
+              - sl
+              - sq
+              - sr
+              - sr-latn
+              - sv
+              - sw
+              - ta
+              - te
+              - tg
+              - th
+              - tk
+              - tr
+              - tt
+              - udm
+              - ug
+              - uk
+              - ur
+              - uz
+              - vi
+              - zh-hans
+              - zh-hant
+      tags:
+        - schema
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+        - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/reef/sets/:
+    get:
+      operationId: sets_list
+      description: List and create the caller's document sets.
+      tags:
+        - sets
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentSet'
+          description: ''
+    post:
+      operationId: sets_create
+      description: List and create the caller's document sets.
+      tags:
+        - sets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentSet'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentSet'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentSet'
+        required: true
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentSet'
+          description: ''
+  /api/reef/sets/{id}/:
+    get:
+      operationId: sets_retrieve
+      description: |-
+        Read a set; retitle, redescribe or delete your own.
+
+        One URL for a set, whoever is asking. Holding the unguessable id is the
+        whole of the read permission; writes are the owner's, and 404 rather than
+        403 so the refusal says nothing about whose it is.
+
+        A set staff have taken down 404s here too, for everyone alike: it is left
+        out of the queryset rather than refused, so nothing confirms it exists.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+      tags:
+        - sets
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+        - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentSet'
+          description: ''
+    put:
+      operationId: sets_update
+      description: |-
+        Read a set; retitle, redescribe or delete your own.
+
+        One URL for a set, whoever is asking. Holding the unguessable id is the
+        whole of the read permission; writes are the owner's, and 404 rather than
+        403 so the refusal says nothing about whose it is.
+
+        A set staff have taken down 404s here too, for everyone alike: it is left
+        out of the queryset rather than refused, so nothing confirms it exists.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+      tags:
+        - sets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentSet'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentSet'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentSet'
+        required: true
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentSet'
+          description: ''
+    patch:
+      operationId: sets_partial_update
+      description: |-
+        Read a set; retitle, redescribe or delete your own.
+
+        One URL for a set, whoever is asking. Holding the unguessable id is the
+        whole of the read permission; writes are the owner's, and 404 rather than
+        403 so the refusal says nothing about whose it is.
+
+        A set staff have taken down 404s here too, for everyone alike: it is left
+        out of the queryset rather than refused, so nothing confirms it exists.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+      tags:
+        - sets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDocumentSet'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDocumentSet'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDocumentSet'
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentSet'
+          description: ''
+    delete:
+      operationId: sets_destroy
+      description: |-
+        Read a set; retitle, redescribe or delete your own.
+
+        One URL for a set, whoever is asking. Holding the unguessable id is the
+        whole of the read permission; writes are the owner's, and 404 rather than
+        403 so the refusal says nothing about whose it is.
+
+        A set staff have taken down 404s here too, for everyone alike: it is left
+        out of the queryset rather than refused, so nothing confirms it exists.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+      tags:
+        - sets
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/reef/sets/{id}/documents/{doc}/:
+    put:
+      operationId: sets_documents_update
+      description: |-
+        Add or remove one document.
+
+        PUT is idempotent, and the identifier is canonicalized first, so
+        .../documents/RFC%209110/ and .../documents/rfc9110/ are the same entry.
+      parameters:
+        - in: path
+          name: doc
+          schema:
+            type: string
+          required: true
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+      tags:
+        - sets
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentSet'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentSet'
+          description: ''
+    delete:
+      operationId: sets_documents_destroy
+      description: |-
+        Add or remove one document.
+
+        PUT is idempotent, and the identifier is canonicalized first, so
+        .../documents/RFC%209110/ and .../documents/rfc9110/ are the same entry.
+      parameters:
+        - in: path
+          name: doc
+          schema:
+            type: string
+          required: true
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+      tags:
+        - sets
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/reef/sets/{id}/order/:
+    put:
+      operationId: sets_order_update
+      description: |-
+        Rewrite the display order in one request.
+
+        Ranks are replaced as a block rather than patched per entry, so a
+        drag-and-drop is one call that cannot half-apply.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+      tags:
+        - sets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentSetOrder'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentSetOrder'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentSetOrder'
+        required: true
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentSet'
+          description: ''
+  /api/reef/stats/:
+    get:
+      operationId: stats_list
+      description: |-
+        Subscriber and set numbers per document.
+
+        Public and unpaginated: Red precomputes the whole series in one call at
+        build time, which is too many identifiers to name in a query string.
+        Filtering with doc is for one-off lookups.
+      parameters:
+        - in: query
+          name: doc
+          schema:
+            type: array
+            items:
+              type: string
+          description: Document identifier, repeatable. Omit to get every document that
+            has any engagement at all. A named document is always returned, with zeros
+            if it has none.
+        - in: query
+          name: set
+          schema:
+            type: string
+            format: uuid
+          description: Document set id. Returns a row per document the set holds, including
+            members with no engagement. Any set resolves for any caller holding its
+            id; an id that names no set 404s. Combines with doc as an intersection.
+      tags:
+        - stats
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+        - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentStats'
+          description: ''
+  /api/reef/subjects/:
+    get:
+      operationId: subjects_list
+      description: |-
+        Every subject that exists, in tree order. Public and unpaginated: the vocabulary is curated by staff rather than self-served, so it stays small enough to hand over whole.
+
+        The list is in tree order, and every entry carries `parent` and `path`, so a caller builds the hierarchy from it in one pass without a second read. `document_count` is the documents assigned to the subject itself; `document_count_deep` includes everything beneath it, deduplicated.
+
+        `doc` narrows the list to the subjects carried by one document, which is how a caller renders the subjects on an RFC page. It returns the subjects actually assigned rather than their ancestors too; a caller wanting the breadcrumb reads it off `path`. The identifier is canonicalized, so `rfc9110` and `RFC 9110` address the same document, and the series has to be named.
+      summary: List the subject vocabulary
+      parameters:
+        - in: query
+          name: doc
+          schema:
+            type: string
+          description: 'Return only the subjects carried by this document. The series
+            must be named: rfc9110, bcp14, std66.'
+      tags:
+        - subjects
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+        - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Subject'
+          description: ''
+  /api/reef/subjects/{slug}/:
+    get:
+      operationId: subjects_retrieve
+      description: |-
+        Three shapes, told apart by which key is present. A live subject comes back in full, with `documents` and its other names in `aliases`. A retired one comes back as `slug`, `retired` and `merged_into` only: it is no longer offered and should not be rendered as current, and what is left is enough to redirect a link that names it. An alias comes back as `slug` and `alias_of`, naming the subject to redirect to.
+
+        A subject's own slug always wins, so a name is never both.
+      summary: Read one subject and the documents carrying it
+      parameters:
+        - in: path
+          name: slug
+          schema:
+            type: string
+          required: true
+      tags:
+        - subjects
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+        - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubjectDetailOrRedirect'
+          description: ''
+  /api/reef/subscriptions/:
+    get:
+      operationId: subscriptions_list
+      description: List and create the current user's subscriptions.
+      tags:
+        - subscriptions
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Subscription'
+          description: ''
+    post:
+      operationId: subscriptions_create
+      description: List and create the current user's subscriptions.
+      tags:
+        - subscriptions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+        required: true
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+          description: ''
+  /api/reef/subscriptions/{id}/:
+    delete:
+      operationId: subscriptions_destroy
+      description: Delete one of the current user's subscriptions.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+      tags:
+        - subscriptions
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/reef/surveys/:
+    get:
+      operationId: surveys_list
+      description: List and create surveys. Staff only; used by the builder.
+      tags:
+        - surveys
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Survey'
+          description: ''
+    post:
+      operationId: surveys_create
+      description: List and create surveys. Staff only; used by the builder.
+      tags:
+        - surveys
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Survey'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Survey'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Survey'
+        required: true
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Survey'
+          description: ''
+  /api/reef/surveys/{id}/:
+    get:
+      operationId: surveys_retrieve
+      description: Retrieve, update, or delete a survey. Staff only; used by the builder.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+      tags:
+        - surveys
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Survey'
+          description: ''
+    put:
+      operationId: surveys_update
+      description: Retrieve, update, or delete a survey. Staff only; used by the builder.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+      tags:
+        - surveys
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Survey'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Survey'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Survey'
+        required: true
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Survey'
+          description: ''
+    patch:
+      operationId: surveys_partial_update
+      description: Retrieve, update, or delete a survey. Staff only; used by the builder.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+      tags:
+        - surveys
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSurvey'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSurvey'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSurvey'
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Survey'
+          description: ''
+    delete:
+      operationId: surveys_destroy
+      description: Retrieve, update, or delete a survey. Staff only; used by the builder.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+      tags:
+        - surveys
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/reef/surveys/{id}/results/:
+    get:
+      operationId: surveys_results_retrieve
+      description: Aggregated results feeding the analytics dashboard. Staff only.
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+      tags:
+        - surveys
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/reef/surveys/{slug}/definition/:
+    get:
+      operationId: surveys_definition_retrieve
+      description: |-
+        Definition and theme for the runner. Published surveys only; an
+        authenticated-visibility survey requires a signed-in caller.
+      parameters:
+        - in: path
+          name: slug
+          schema:
+            type: string
+          required: true
+      tags:
+        - surveys
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+        - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SurveyDefinition'
+          description: ''
+  /api/reef/surveys/{slug}/responses/:
+    post:
+      operationId: surveys_responses_create
+      description: Submit a response to a published survey.
+      parameters:
+        - in: path
+          name: slug
+          schema:
+            type: string
+          required: true
+      tags:
+        - surveys
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResponseCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResponseCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResponseCreate'
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+        - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseCreate'
+          description: ''
+  /api/reef/surveys/open/:
+    get:
+      operationId: surveys_open_list
+      description: |-
+        Open surveys Red may offer, and the surveys Reef's own list page
+        offers. Bearer optional: an identified user always receives their
+        targeted surveys; an anonymous caller sees open ones only, unless
+        ``include_authenticated`` is set. Surveys the identified user has
+        already answered are left out unless ``include_answered`` is set.
+      parameters:
+        - in: query
+          name: include_answered
+          schema:
+            type: boolean
+          description: Keep surveys the signed-in caller has already answered, instead
+            of leaving them out. For a list the visitor opened themselves; an unprompted
+            invitation should leave this off. No effect for an anonymous caller, whose
+            responses record no submitter to match on.
+        - in: query
+          name: include_authenticated
+          schema:
+            type: boolean
+          description: List an authenticated-visibility survey to an anonymous caller
+            too, instead of leaving it out. The runner still refuses that survey's definition
+            to an anonymous visitor and prompts a login instead; this only lets the
+            caller see that the survey exists before that prompt. No effect once the
+            caller is signed in, since they already see every visibility either way.
+      tags:
+        - surveys
+      security:
+        - BearerAuth: []
+        - cookieAuth: []
+        - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OpenSurvey'
+          description: ''
+components:
+  schemas:
+    DigestPreference:
+      type: object
+      properties:
+        receive_digest_email:
+          type: boolean
+    DocumentAreaOrGroup:
+      type: object
+      description: The area or group a document belongs to, narrowed to what a page
+        names.
+      properties:
+        acronym:
+          type: string
+        name:
+          type: string
+      required:
+        - acronym
+        - name
+    DocumentIdentifier:
+      type: object
+      description: One persistent identifier -- a DOI or an ISSN -- Red records for
+        a document.
+      properties:
+        type:
+          type: string
+        value:
+          type: string
+      required:
+        - type
+        - value
+    DocumentMetadata:
+      type: object
+      description: 'A document as the index file names it: just enough to render a
+        row.'
+      properties:
+        title:
+          type: string
+          nullable: true
+        subseries:
+          type: array
+          items:
+            type: string
+      required:
+        - subseries
+        - title
+    DocumentSet:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentSetEntry'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - created_at
+        - documents
+        - id
+        - title
+        - updated_at
+    DocumentSetEntry:
+      type: object
+      properties:
+        doc:
+          type: string
+          readOnly: true
+        rank:
+          type: integer
+          readOnly: true
+          description: Lower sorts first
+        added_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - added_at
+        - doc
+        - rank
+    DocumentSetOrder:
+      type: object
+      description: The set's documents, in the order they should be shown.
+      properties:
+        documents:
+          type: array
+          items:
+            type: string
+      required:
+        - documents
+    DocumentStats:
+      type: object
+      description: Public engagement numbers for one document.
+      properties:
+        doc:
+          type: string
+        subscriber_count:
+          type: integer
+        set_count:
+          type: integer
+      required:
+        - doc
+        - set_count
+        - subscriber_count
+    FullDocumentMetadata:
+      type: object
+      description: "A document as its own subject's file names it: everything Red's
+        index says."
+      properties:
+        title:
+          type: string
+          nullable: true
+        subseries:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          nullable: true
+        status_name:
+          type: string
+          nullable: true
+        stream:
+          type: string
+          nullable: true
+        stream_name:
+          type: string
+          nullable: true
+        obsoletes:
+          type: array
+          items:
+            type: integer
+        obsoleted_by:
+          type: array
+          items:
+            type: integer
+        updates:
+          type: array
+          items:
+            type: integer
+        updated_by:
+          type: array
+          items:
+            type: integer
+        authors:
+          type: array
+          items:
+            type: string
+        published:
+          type: string
+          nullable: true
+        identifiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentIdentifier'
+        area:
+          allOf:
+            - $ref: '#/components/schemas/DocumentAreaOrGroup'
+          nullable: true
+        group:
+          allOf:
+            - $ref: '#/components/schemas/DocumentAreaOrGroup'
+          nullable: true
+        keywords:
+          type: array
+          items:
+            type: string
+        pages:
+          type: integer
+          nullable: true
+        abstract:
+          type: string
+          nullable: true
+      required:
+        - abstract
+        - area
+        - authors
+        - group
+        - identifiers
+        - keywords
+        - obsoleted_by
+        - obsoletes
+        - pages
+        - published
+        - status
+        - status_name
+        - stream
+        - stream_name
+        - subseries
+        - title
+        - updated_by
+        - updates
+    KindEnum:
+      enum:
+        - new_rfc
+        - by_status
+        - obsoleted
+        - rfc
+        - set
+        - subject
+      type: string
+      description: |-
+        * `new_rfc` - Any new RFC
+        * `by_status` - New RFC by status
+        * `obsoleted` - RFC obsoleted or made historic
+        * `rfc` - Changes to one specific RFC
+        * `set` - Changes to anything in a document set
+        * `subject` - Changes to anything carrying a subject
+    MinimalSubject:
+      type: object
+      description: |-
+        The fields a subscription list needs to show and link a subject.
+
+        Avoid SubjectSerializer: its document counts run two queries per subject
+        when nothing has precomputed them.
+      properties:
+        slug:
+          type: string
+          readOnly: true
+          description: Stable identifier used in URLs and by Red. Changing it leaves
+            the old one behind as an alias, so links naming it still resolve; the
+            name is still the field to edit when only the wording changed.
+          pattern: ^[-a-zA-Z0-9_]+$
+        name:
+          type: string
+          readOnly: true
+          description: How the subject is shown to readers.
+        path:
+          type: string
+          readOnly: true
+          description: Slugs from the top down, separated by a slash. Derived; edit
+            the slug or the parent instead.
+      required:
+        - name
+        - path
+        - slug
+    MyDocument:
+      type: object
+      description: |-
+        What one document is to the caller: their rating, their subscription,
+        their sets.
+
+        Nothing public: no subscriber or set total. Those are the same for
+        everybody, so Red takes them from the data it already has for the
+        route rather than from a per-caller request.
+      properties:
+        doc:
+          type: string
+        your_rating:
+          type: integer
+          nullable: true
+        your_subscription_id:
+          type: integer
+          nullable: true
+        your_set_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+        - doc
+        - your_rating
+        - your_set_ids
+        - your_subscription_id
+    MyDocumentSet:
+      type: object
+      description: |-
+        One of the caller's sets, without its membership.
+
+        Deliberately not docsets.DocumentSetSerializer: that one carries the set's
+        whole `documents` array, which is the thing this endpoint exists to avoid
+        sending. A client drawing "which of my sets hold this document" needs every
+        set the caller owns to label the rows, but it only needs membership for the
+        documents it is asking about — and that arrives per document as
+        `your_set_ids`. Sending both would make the payload grow with the caller's
+        library rather than with the page.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        description:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - created_at
+        - description
+        - id
+        - title
+        - updated_at
+    MyDocuments:
+      type: object
+      description: "The whole response: the caller's sets, and a row per requested
+        document."
+      properties:
+        sets:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyDocumentSet'
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyDocument'
+      required:
+        - documents
+        - sets
+    MyRating:
+      type: object
+      properties:
+        doc:
+          type: string
+        value:
+          type: integer
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - doc
+        - updated_at
+        - value
+    OpenSurvey:
+      type: object
+      description: |-
+        One survey as Red offers it, which is as a toast.
+
+        The fields line up with Red's Notification: title, description and url are shown,
+        and slug is the string Red keys a dismissal on. documents is the addition that
+        tells it where to offer this at all.
+
+        visibility says whether the runner will admit an anonymous visitor, so Red can
+        offer an authenticated-only survey to a signed-in reader alone rather than
+        sending an anonymous one to a runner that refuses them. It is the field that
+        tells the two apart in the one payload that mixes them, which is the
+        precomputed surveys/published.json; the rows an anonymous caller is served,
+        here or from that store's surveys/open.json, are all "open" by construction --
+        unless the caller asked the served endpoint to widen that with
+        include_authenticated, which is what Reef's own survey list does so it can
+        list a survey the runner will still turn an anonymous visitor away from.
+
+        answered says whether the signed-in caller has already responded, for a list
+        that still names answered surveys; it is always false for an anonymous caller
+        and in every precomputed file.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        slug:
+          type: string
+          maxLength: 100
+          pattern: ^[-a-zA-Z0-9_]+$
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        url:
+          type: string
+          readOnly: true
+        documents:
+          type: array
+          items:
+            type: string
+          nullable: true
+          readOnly: true
+        visibility:
+          $ref: '#/components/schemas/VisibilityEnum'
+        answered:
+          type: boolean
+          readOnly: true
+      required:
+        - answered
+        - documents
+        - id
+        - slug
+        - title
+        - url
+    PaginatedWebNotificationList:
+      type: object
+      required:
+        - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebNotification'
+    PatchedDigestPreference:
+      type: object
+      properties:
+        receive_digest_email:
+          type: boolean
+    PatchedDocumentSet:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentSetEntry'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedSurvey:
+      type: object
+      description: Full survey representation used by the management API and the builder.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        slug:
+          type: string
+          maxLength: 100
+          pattern: ^[-a-zA-Z0-9_]+$
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        definition: {}
+        theme:
+          nullable: true
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        visibility:
+          $ref: '#/components/schemas/VisibilityEnum'
+        audience:
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    Popularity:
+      type: object
+      description: The whole ranking, most popular first, with when it was last computed.
+      properties:
+        computed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the ranking was last recomputed; null while it is empty.
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/PopularityEntry'
+      required:
+        - computed_at
+        - entries
+    PopularityEntry:
+      type: object
+      properties:
+        rfc:
+          type: string
+          maxLength: 32
+        popularity:
+          type: number
+          format: double
+          maximum: 1.0
+          minimum: 0.0
+          description: 0 is the least popular ranked document, 1 the most.
+      required:
+        - popularity
+        - rfc
+    PrecomputedSubjectDetail:
+      type: object
+      description: |-
+        A subject's own file: the served shape plus what a page cannot look up.
+
+        Both additions are sibling maps rather than changes to the arrays they
+        describe. Retyping `documents` into a list of objects, or `children` into
+        one, is the change that breaks a caller, and it is what Reef asks Red not to
+        do to it. A map also grows a field later without retyping anything.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        slug:
+          type: string
+          readOnly: true
+          description: Stable identifier used in URLs and by Red. Changing it leaves
+            the old one behind as an alias, so links naming it still resolve; the
+            name is still the field to edit when only the wording changed.
+          pattern: ^[-a-zA-Z0-9_]+$
+        name:
+          type: string
+          readOnly: true
+          description: How the subject is shown to readers.
+        description:
+          type: string
+          readOnly: true
+          description: What belongs under this subject, for whoever curates it next
+            and for a caller drawing a picker.
+        parent:
+          type: string
+          nullable: true
+          readOnly: true
+        path:
+          type: string
+          readOnly: true
+          description: Slugs from the top down, separated by a slash. Derived; edit
+            the slug or the parent instead.
+        document_count:
+          type: integer
+          readOnly: true
+        document_count_deep:
+          type: integer
+          readOnly: true
+        retired:
+          type: boolean
+          readOnly: true
+        children:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        aliases:
+          type: array
+          items:
+            type: string
+            description: A name that resolves to this subject. Readers following a
+              link that uses it are redirected to the subject's own slug.
+          readOnly: true
+        documents:
+          type: array
+          items:
+            type: string
+          description: |-
+            The documents assigned to this subject, and not to those beneath it.
+
+            Direct assignments only. Red consumes this array and the precomputer keys
+            document_meta off it, so widening it to the subtree would be a contract
+            change. The subtree is the index file's business.
+          readOnly: true
+        document_meta:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/FullDocumentMetadata'
+          readOnly: true
+        subject_meta:
+          allOf:
+            - $ref: '#/components/schemas/SubjectMeta'
+          readOnly: true
+      required:
+        - aliases
+        - children
+        - description
+        - document_count
+        - document_count_deep
+        - document_meta
+        - documents
+        - id
+        - name
+        - parent
+        - path
+        - retired
+        - slug
+        - subject_meta
+    PrecomputedSubjectDetailOrRedirect:
+      oneOf:
+        - $ref: '#/components/schemas/PrecomputedSubjectDetail'
+        - $ref: '#/components/schemas/RetiredSubject'
+        - $ref: '#/components/schemas/SubjectAlias'
+    RatingAggregate:
+      type: object
+      properties:
+        rfc:
+          type: string
+        your_rating:
+          type: integer
+          nullable: true
+      required:
+        - rfc
+        - your_rating
+    RatingWrite:
+      type: object
+      properties:
+        value:
+          type: integer
+          maximum: 5
+          minimum: 1
+      required:
+        - value
+    ResponseCreate:
+      type: object
+      description: |-
+        A submission: the answers, plus optional anti-spam measures.
+
+        duration_seconds and pages_viewed are reported by the caller, so a determined
+        spammer can forge them; they are for staff to review, not a gate. Both are
+        write-only so the 201 body never sends a null for one the caller left out.
+      properties:
+        data: {}
+        duration_seconds:
+          type: integer
+          maximum: 2592000
+          minimum: 0
+          writeOnly: true
+          description: Seconds the submitter took on the survey, as reported by the
+            submitting client. An anti-spam measure.
+        pages_viewed:
+          type: integer
+          maximum: 10000
+          minimum: 0
+          writeOnly: true
+          description: Pages viewed before submitting, as counted by the submitting
+            client. An anti-spam measure.
+    RetiredSubject:
+      type: object
+      description: |-
+        A retired subject, as the only thing a retired subject is still for.
+
+        Deliberately not the detail shape. A retired subject is not offered, does not
+        appear in the vocabulary, and should not be rendered as though it were current;
+        what is left is enough to redirect a link that names it. Callers tell the two
+        apart by `retired`, which the live shape also carries.
+      properties:
+        slug:
+          type: string
+          readOnly: true
+          description: Stable identifier used in URLs and by Red. Changing it leaves
+            the old one behind as an alias, so links naming it still resolve; the
+            name is still the field to edit when only the wording changed.
+          pattern: ^[-a-zA-Z0-9_]+$
+        retired:
+          type: boolean
+          readOnly: true
+        merged_into:
+          type: string
+          description: Stable identifier used in URLs and by Red. Changing it leaves
+            the old one behind as an alias, so links naming it still resolve; the
+            name is still the field to edit when only the wording changed.
+          readOnly: true
+      required:
+        - merged_into
+        - retired
+        - slug
+    StatusEnum:
+      enum:
+        - draft
+        - published
+        - closed
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `published` - Published
+        * `closed` - Closed
+    Subject:
+      type: object
+      description: |-
+        A subject as a caller sees it, without its membership.
+
+        The id is carried as well as the slug because subscribing names the id:
+        the subscription holds a foreign key so that renaming a subject cannot
+        detach its subscribers, and the id is the half of a subject's identity
+        that a rename does not touch.
+
+        parent and path are what let a caller build the tree from the flat list in one
+        pass, with no second read and nothing nested. Both counts are carried because
+        a picker wants a figure against every node without walking the subtree to get
+        one, and because they are two integers.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        slug:
+          type: string
+          readOnly: true
+          description: Stable identifier used in URLs and by Red. Changing it leaves
+            the old one behind as an alias, so links naming it still resolve; the
+            name is still the field to edit when only the wording changed.
+          pattern: ^[-a-zA-Z0-9_]+$
+        name:
+          type: string
+          readOnly: true
+          description: How the subject is shown to readers.
+        description:
+          type: string
+          readOnly: true
+          description: What belongs under this subject, for whoever curates it next
+            and for a caller drawing a picker.
+        parent:
+          type: string
+          nullable: true
+          readOnly: true
+        path:
+          type: string
+          readOnly: true
+          description: Slugs from the top down, separated by a slash. Derived; edit
+            the slug or the parent instead.
+        document_count:
+          type: integer
+          readOnly: true
+        document_count_deep:
+          type: integer
+          readOnly: true
+      required:
+        - description
+        - document_count
+        - document_count_deep
+        - id
+        - name
+        - parent
+        - path
+        - slug
+    SubjectAlias:
+      type: object
+      description: |-
+        An alias, as the only thing an alias is for: the name it resolves to.
+
+        Not the subject's own payload served under the alias's URL. That would answer
+        the read in one fetch, at the cost of publishing the same subject under two
+        addresses with nothing saying which one is canonical, and canonicalising a link
+        is the whole reason a caller asked. So the same stub shape a retired subject
+        gets, and callers tell the shapes apart by which key is present.
+      properties:
+        slug:
+          type: string
+          readOnly: true
+          description: A name that resolves to this subject. Readers following a link
+            that uses it are redirected to the subject's own slug.
+          pattern: ^[-a-zA-Z0-9_]+$
+        alias_of:
+          type: string
+          description: Stable identifier used in URLs and by Red. Changing it leaves
+            the old one behind as an alias, so links naming it still resolve; the
+            name is still the field to edit when only the wording changed.
+          readOnly: true
+      required:
+        - alias_of
+        - slug
+    SubjectAncestor:
+      type: object
+      description: |-
+        One ancestor on the way up to the root, root first.
+
+        The same fields ``Subject``/``SubjectIndexEntrySerializer`` already carry,
+        minus what only makes sense on a subject's own file (``children``,
+        ``path``). No nested children of its own: the ancestor chain is a single
+        line up to the root, so there is nothing to nest.
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        document_count:
+          type: integer
+        document_count_deep:
+          type: integer
+      required:
+        - description
+        - document_count
+        - document_count_deep
+        - name
+        - slug
+    SubjectBranchNode:
+      type: object
+      description: |-
+        One subject in a descendant branch, with its own children nested beneath it.
+
+        A tree, not a flat map keyed by slug: a page rendering a nested listing
+        needs to know which subject is whose child, and a flat map throws that
+        relationship away.
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        document_count:
+          type: integer
+        document_count_deep:
+          type: integer
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubjectBranchNode'
+      required:
+        - children
+        - description
+        - document_count
+        - document_count_deep
+        - name
+        - slug
+    SubjectDetail:
+      type: object
+      description: |-
+        A subject and the documents carrying it.
+
+        Separate from the list serializer for the reason me.MyDocumentSetSerializer
+        is separate from docsets.DocumentSetSerializer: a picker needs every
+        subject and no membership, so sending membership in the list would make
+        the payload grow with the whole catalogue rather than with the vocabulary.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        slug:
+          type: string
+          readOnly: true
+          description: Stable identifier used in URLs and by Red. Changing it leaves
+            the old one behind as an alias, so links naming it still resolve; the
+            name is still the field to edit when only the wording changed.
+          pattern: ^[-a-zA-Z0-9_]+$
+        name:
+          type: string
+          readOnly: true
+          description: How the subject is shown to readers.
+        description:
+          type: string
+          readOnly: true
+          description: What belongs under this subject, for whoever curates it next
+            and for a caller drawing a picker.
+        parent:
+          type: string
+          nullable: true
+          readOnly: true
+        path:
+          type: string
+          readOnly: true
+          description: Slugs from the top down, separated by a slash. Derived; edit
+            the slug or the parent instead.
+        document_count:
+          type: integer
+          readOnly: true
+        document_count_deep:
+          type: integer
+          readOnly: true
+        retired:
+          type: boolean
+          readOnly: true
+        children:
+          type: array
+          items:
+            type: string
+          readOnly: true
+        aliases:
+          type: array
+          items:
+            type: string
+            description: A name that resolves to this subject. Readers following a
+              link that uses it are redirected to the subject's own slug.
+          readOnly: true
+        documents:
+          type: array
+          items:
+            type: string
+          description: |-
+            The documents assigned to this subject, and not to those beneath it.
+
+            Direct assignments only. Red consumes this array and the precomputer keys
+            document_meta off it, so widening it to the subtree would be a contract
+            change. The subtree is the index file's business.
+          readOnly: true
+      required:
+        - aliases
+        - children
+        - description
+        - document_count
+        - document_count_deep
+        - documents
+        - id
+        - name
+        - parent
+        - path
+        - retired
+        - slug
+    SubjectDetailOrRedirect:
+      oneOf:
+        - $ref: '#/components/schemas/SubjectDetail'
+        - $ref: '#/components/schemas/RetiredSubject'
+        - $ref: '#/components/schemas/SubjectAlias'
+    SubjectIndex:
+      type: object
+      description: |-
+        The whole vocabulary in one payload: the tree, the assignments, the titles.
+
+        Two maps rather than two lists, both keyed, so that a caller looks a subject
+        or a document up directly instead of building an index of its own. The
+        metadata sits in one map referenced by identifier rather than beside each
+        subject that carries the document, which would repeat every title once per
+        covering subject.
+
+        What is deliberately absent is each subject's subtree. It is derivable from
+        ``path`` and ``children`` in the pass a caller is already making, and writing
+        it out would store every identifier once per ancestor.
+      properties:
+        documents:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/DocumentMetadata'
+        subjects:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/SubjectIndexEntry'
+      required:
+        - documents
+        - subjects
+    SubjectIndexEntry:
+      type: object
+      description: |-
+        One subject in the index file.
+
+        Field order is the file's key order: a run that finds the same data must
+        write the same bytes. It is the list serializer's fields plus the two the
+        index adds.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        parent:
+          type: string
+          nullable: true
+        path:
+          type: string
+        children:
+          type: array
+          items:
+            type: string
+        documents:
+          type: array
+          items:
+            type: string
+        document_count:
+          type: integer
+        document_count_deep:
+          type: integer
+      required:
+        - children
+        - description
+        - document_count
+        - document_count_deep
+        - documents
+        - id
+        - name
+        - parent
+        - path
+    SubjectMeta:
+      type: object
+      description: |-
+        A subject's branch of the vocabulary: its ancestors and its whole
+        descendant subtree, so that a page renders both without a second fetch.
+
+        Not siblings, and not the subject itself, which carries its own name and
+        description at the top level of this same file already.
+      properties:
+        ancestors:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubjectAncestor'
+        descendants:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubjectBranchNode'
+      required:
+        - ancestors
+        - descendants
+    Subscription:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+        params: {}
+        set:
+          type: string
+          format: uuid
+          nullable: true
+        subject:
+          type: integer
+          nullable: true
+        subject_details:
+          allOf:
+            - $ref: '#/components/schemas/MinimalSubject'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - created_at
+        - id
+        - kind
+        - subject_details
+    Survey:
+      type: object
+      description: Full survey representation used by the management API and the builder.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        slug:
+          type: string
+          maxLength: 100
+          pattern: ^[-a-zA-Z0-9_]+$
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        definition: {}
+        theme:
+          nullable: true
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        visibility:
+          $ref: '#/components/schemas/VisibilityEnum'
+        audience:
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - created_at
+        - id
+        - slug
+        - title
+        - updated_at
+    SurveyDefinition:
+      type: object
+      description: Definition and theme served to the survey runner.
+      properties:
+        slug:
+          type: string
+          maxLength: 100
+          pattern: ^[-a-zA-Z0-9_]+$
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        definition: {}
+        theme:
+          nullable: true
+        visibility:
+          $ref: '#/components/schemas/VisibilityEnum'
+      required:
+        - slug
+        - title
+    VisibilityEnum:
+      enum:
+        - open
+        - authenticated
+      type: string
+      description: |-
+        * `open` - Open (anonymous)
+        * `authenticated` - Authenticated only
+    WebNotification:
+      type: object
+      description: |-
+        One row of the caller's own notification feed.
+
+        subscription_ids stays off the wire: nothing on Red needs it yet, and event
+        already carries doc and url, everything a display needs to render and link.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        kind:
+          type: string
+          readOnly: true
+        event:
+          type: object
+          description: The event as stored. Every key but rfc is untyped here. rfc
+            is on an RFC change alone, and only when Red had an entry for the document
+            at the time.
+          properties:
+            rfc:
+              type: object
+              description: Red's own entry for the document from rfc-index.json, an
+                RfcCommon, passed on as Red published it. Only number is relied on;
+                every other field is Red's to define.
+              properties:
+                number:
+                  type: integer
+              required:
+                - number
+              additionalProperties: true
+          additionalProperties: true
+          readOnly: true
+        read:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - created_at
+        - event
+        - id
+        - kind
+        - read
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

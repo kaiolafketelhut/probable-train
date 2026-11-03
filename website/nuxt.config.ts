@@ -1,0 +1,207 @@
+import tailwindcss from '@tailwindcss/vite'
+import { readFileSync } from 'fs'
+
+const { version } = JSON.parse(readFileSync('./package.json', 'utf-8'))
+
+// inserted in the <head> some inline JS to determine scrollbar width so that CSS can use it in calc()
+// this is intentionally inserted in the <head> so that it runs immediately in the browser
+const scrollbarWidthInlineJS = `function _updateScrollbarWidth(){if(!document.body||!document.body.style)return;document.body.style.setProperty('--rfc-editor-org-scrollbar-width',(window.innerWidth-document.documentElement.clientWidth)+'px')}window.addEventListener('resize', _updateScrollbarWidth, false);document.addEventListener('DOMContentLoaded', _updateScrollbarWidth, false);window.addEventListener('load', _updateScrollbarWidth);window.setInterval(_updateScrollbarWidth,1000)`
+
+export default defineNuxtConfig({
+  compatibilityDate: '2025-08-05',
+  devtools: { enabled: false },
+  typescript: { strict: true },
+  modules: [
+    // Note: don't use 'Nuxt Device' see note in hasTouch.ts
+    'reka-ui/nuxt',
+    '@nuxt/test-utils/module',
+    '@pinia/nuxt',
+    'pinia-plugin-persistedstate/nuxt',
+    './modules/color-mode/module.ts',
+    'nuxt-vitalizer'
+  ],
+  colorMode: {
+    classSuffix: '',
+    preference: 'system',
+    fallback: 'light'
+  },
+  experimental: {
+    componentIslands: true
+  },
+  css: ['~/assets/css/tailwind.css'],
+  vitalizer: {
+    disablePrefetchLinks: true,
+    disablePreloadLinks: true
+  },
+  vite: {
+    plugins: [tailwindcss()],
+    css: {
+      lightningcss: {
+        errorRecovery: true
+      }
+    },
+    build: {
+      cssCodeSplit: false,
+      rollupOptions: {
+        preserveEntrySignatures: 'strict',
+        output: {
+          preserveModules: false,
+          manualChunks(id) {
+            if (id.includes('node_modules/luxon')) {
+              return 'vendor-luxon'
+            }
+            // if (id.includes('node_modules/nuxt') || id.includes('node_modules/@nuxt')) {
+            //   return 'vendor-nuxt'
+            // }
+            if (id.includes('app/components/content')) {
+              return 'components-content'
+            }
+            if (id.includes('app/components/Graphics')) {
+              return 'components-graphics'
+            }
+            if (id.includes('app/components/RFC')) {
+              return 'components-rfc'
+            }
+            if (id.includes('app/components/TableOf')) {
+              return 'components-tableof'
+            }
+            if (id.includes('app/components/Table')) {
+              return 'components-table'
+            }
+            if (id.includes('app/components/Vertical') || id.includes('app/components/Horizontal')) {
+              return 'components-vertical-horizontal'
+            }
+          }
+        }
+      }
+    },
+    optimizeDeps: {
+      include: ['es-toolkit', 'es-toolkit/compat', 'luxon', 'zod', '@vueuse/core', 'core-js/actual/array/to-sorted']
+    }
+  },
+  nitro: {
+    // Production
+    storage: {
+      db: {
+        driver: 'fs',
+        base: './data/db'
+      }
+    },
+    // Development
+    devStorage: {
+      db: {
+        driver: 'fs',
+        base: './data/db'
+      }
+    }
+  },
+  runtimeConfig: {
+    cfServiceTokenId: '', // NUXT_CF_SERVICE_TOKEN_ID env var
+    cfServiceTokenSecret: '', // NUXT_CF_SERVICE_TOKEN_SECRET env var
+    public: {
+      // These settings are available client-side (others are server-side only). The following are default values overriden by env varss
+      datatrackerBase: 'http://localhost:8000', // NUXT_PUBLIC_DATATRACKER_BASE env var
+      siteBase: 'https://www.rfc-editor.org', // NUXT_PUBLIC_SITE_BASE env var
+      apiV1Base: '', // NUXT_PUBLIC_API_V1_BASE env var
+      errataBase: 'https://errata.rfc-editor.org', // NUXT_PUBLIC_ERRATA_BASE env var
+      queueBase: 'https://queue.rfc-editor.org', // NUXT_PUBLIC_QUEUE_BASE env var
+      iadBase: 'https://iad.rfc-editor.org', // NUXT_PUBLIC_IAD_BASE env var
+      dashboardBase: 'https://dashboard.rfc-editor.org', // NUXT_PUBLIC_DASHBOARD_BASE env var
+      reefBase: 'http://localhost:8088', // NUXT_PUBLIC_REEF_BASE env var — the Reef API, called client-side with the OIDC access token
+      // NUXT_PUBLIC_REEF_API env var — local dev only. Empty means every Reef call goes to
+      // reefBase. Set it to a scenario name from ~/utilities/reef-fixtures (on, empty, slow, error)
+      // and the operations with fixtures are answered locally, with no Reef and no sign-in needed.
+      // The /subjects/ pages are not covered by it: see reefPrecomputedSource below. `npm run
+      // dev:fixtures` is this with a scenario already chosen. Read only under import.meta.dev, so
+      // setting it in a deployed environment does nothing.
+      reefApi: '',
+      // NUXT_PUBLIC_REEF_PRECOMPUTED_SOURCE env var — local dev only. Empty means the /subjects/
+      // pages read Reef's precomputed files from reefBase. `staging` or `prod` reads them from that
+      // deployment instead, since Reef's own vocabulary is too large to serve as a local fixture (see
+      // reef-precomputed.ts). `npm run dev:staging` and `dev:prod` are this with a source already
+      // chosen. Read only under import.meta.dev, so setting it in a deployed environment does nothing.
+      reefPrecomputedSource: '',
+      matomoSiteId: '12', // 12 is Red non-production ie local dev. Otherwise will be provided by env var NUXT_PUBLIC_MATOMO_SITE_ID
+      typesenseApiKey: '2Ic06V287miUyJ32ee25q0ccXK0Dr3RO', // NUXT_PUBLIC_TYPESENSE_API_KEY Be sure to use an API key that only allows search operations
+      typesenseHost: 'typesense.staging.ietf.org', // NUXT_PUBLIC_TYPESENSE_HOST
+      websiteVersion: version,
+
+      // OIDC — Authentik @ account.ietf.org, "rfc-editor-staging" application.
+      // Client-side public client (Authorization Code + PKCE). client_id is not secret.
+      // oidc-spa only consumes oidcIssuerUri (it auto-discovers the other endpoints via
+      // the .well-known document); the remaining URLs are stored for reference / other
+      // consumers (e.g. a future worker or Nitro proxy). All overridable via NUXT_PUBLIC_OIDC_* env vars.
+      // NUXT_PUBLIC_OIDC_ENROLLMENT_URL — Authentik's enrolment flow. Registration is started
+      // as a normal authorization request that's routed via this flow, so a new account
+      // finishes signed in and back on the page it started from (see oidcRegister).
+      oidcEnrollmentUrl: 'https://account.ietf.org/if/flow/ietf-enrollment/',
+      oidcIssuerUri: 'https://account.ietf.org/application/o/rfc-editor-staging/', // NUXT_PUBLIC_OIDC_ISSUER_URI
+      oidcClientId: 'g2uRUBCyxPlUDuEh11lw71iLQRc6CLh3tgvJvhUH', // NUXT_PUBLIC_OIDC_CLIENT_ID
+      oidcScopes: 'openid profile email offline_access', // NUXT_PUBLIC_OIDC_SCOPES (space-separated) — offline_access = refresh token
+      oidcHomeUrl: '/after-login/', // NUXT_PUBLIC_OIDC_HOME_URL — login callback target (AFTER_LOGIN_PATH); must match a registered redirect URI
+      oidcConfigurationUrl:
+        'https://account.ietf.org/application/o/rfc-editor-staging/.well-known/openid-configuration', // NUXT_PUBLIC_OIDC_CONFIGURATION_URL
+      oidcAuthorizeUrl: 'https://account.ietf.org/application/o/authorize/', // NUXT_PUBLIC_OIDC_AUTHORIZE_URL
+      oidcTokenUrl: 'https://account.ietf.org/application/o/token/', // NUXT_PUBLIC_OIDC_TOKEN_URL
+      oidcUserinfoUrl: 'https://account.ietf.org/application/o/userinfo/', // NUXT_PUBLIC_OIDC_USERINFO_URL
+      oidcLogoutUrl: 'https://account.ietf.org/application/o/rfc-editor-staging/end-session/', // NUXT_PUBLIC_OIDC_LOGOUT_URL
+      oidcJwksUrl: 'https://account.ietf.org/application/o/rfc-editor-staging/jwks/' // NUXT_PUBLIC_OIDC_JWKS_URL
+    }
+  },
+  postcss: {
+    plugins: {
+      // 'postcss-nested': {},
+      // 'postcss-custom-media': {},
+      'postcss-nested-import': {
+        // used to scope RFC HTML styles so external CSS doesn't affect the rest of the site
+        // see @nested-import
+      }
+    }
+  },
+  plugins: [
+    // '~/plugins/telemetry/instrumentation'
+  ],
+  app: {
+    buildAssetsDir: `/_nuxt/${version}/`,
+    head: {
+      htmlAttrs: {
+        lang: 'en'
+      },
+      link: [
+        { rel: 'preconnect', href: 'https://static.ietf.org', crossorigin: '' },
+        {
+          rel: 'preload',
+          as: 'font',
+          type: 'font/woff2',
+          href: 'https://static.ietf.org/fonts/inter/inter-latin.woff2',
+          crossorigin: ''
+        },
+        {
+          rel: 'stylesheet',
+          href: 'https://static.ietf.org/fonts/inter/import.css'
+        }
+      ],
+      script: [
+        {
+          innerHTML: scrollbarWidthInlineJS
+        }
+      ]
+    }
+  },
+  $development: {
+    routeRules: {
+      /**
+       * In development mode (`npm run dev`) the website fetches API data from either a local dev api or some
+       * staging / prod environment.
+       * Uncomment/comment out the lines to adjust the config.
+       */
+      '/api/v1/**': {
+        proxy: 'https://www.rfc-editor.org/api/v1/**'
+        // proxy: 'http://localhost:3001/api/v1/**'
+      }
+    }
+  },
+  devServer: {
+    host: '0.0.0.0'
+  }
+})

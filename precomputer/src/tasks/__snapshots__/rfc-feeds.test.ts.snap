@@ -1,0 +1,238 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`feeds (rss, atom) 1`] = `
+"<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://www.rfc-editor.org</id>
+    <title>Recent RFCs</title>
+    <updated>2030-02-01T00:00:00.000Z</updated>
+    <generator>https://www.npmjs.com/package/feed</generator>
+    <link rel="alternate" href="https://www.rfc-editor.org"/>
+    <subtitle>Recently published RFCs</subtitle>
+    <entry>
+        <title type="html"><![CDATA[RFC 10029: DNS Multiple QTYPEs]]></title>
+        <id>https://www.rfc-editor.org/info/rfc10029/</id>
+        <link href="https://www.rfc-editor.org/info/rfc10029/"/>
+        <updated>2026-07-31T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[This document specifies a method for a DNS client to request additional DNS record types to be delivered alongside the primary record type specified in the Question section of a DNS QUERY (OpCode=0).]]></summary>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[RFC 10022: IMAP UIDBATCHES Extension]]></title>
+        <id>https://www.rfc-editor.org/info/rfc10022/</id>
+        <link href="https://www.rfc-editor.org/info/rfc10022/"/>
+        <updated>2026-07-31T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[The UIDBATCHES extension of the Internet Message Access Protocol (IMAP) allows clients to retrieve Unique Identifier (UID) ranges that partition a mailbox's messages into equally sized batches. This enables clients to perform operations such as FETCH, SEARCH, and STORE on specific message batches, providing better control over resource usage and response sizes. The extension is particularly useful with the UIDONLY mode where sequence numbers are unavailable.]]></summary>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[RFC 10023: The "_for-sale" Underscored and Globally Scoped DNS Node Name]]></title>
+        <id>https://www.rfc-editor.org/info/rfc10023/</id>
+        <link href="https://www.rfc-editor.org/info/rfc10023/"/>
+        <updated>2026-07-30T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[<p>This document defines an operational convention that uses the</p><p>reserved underscored DNS leaf node name "_for-sale" to indicate the</p><p>parent domain name is available for purchase.</p><p>The convention can be deployed without disrupting existing</p><p>operations, and it may be applied even when the domain name is still</p><p>actively in use.</p>]]></summary>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[RFC 10019: Zeroconf Multicast Address Allocation Problem Statement and Requirements]]></title>
+        <id>https://www.rfc-editor.org/info/rfc10019/</id>
+        <link href="https://www.rfc-editor.org/info/rfc10019/"/>
+        <updated>2026-07-30T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[<p>This document surveys current problems with existing protocols for automatically assigning multicast IP addresses in zero-configuration (zeroconf) networking environments. It addresses key challenges, such as link-layer address collisions, hardware limitations, multicast snooping inefficiencies, and the need to avoid manual configuration. Based on these challenges, it derives requirements for a lightweight, decentralized solution for dynamically allocating unique multicast group addresses without central coordination.</p><p>The document presents explicit requirements covering discovery, allocation, conflict detection and resolution, and lease management. It also evaluates considerations specific to IPv6 and IPv4 multicast address ranges, and identifies approaches that are unsuited for zeroconf deployment. This foundation serves as a reference for developing future solutions for multicast address allocation that operate autonomously within local networks.</p>]]></summary>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[RFC 10013: Entity Attestation Token (EAT) Measured Component]]></title>
+        <id>https://www.rfc-editor.org/info/rfc10013/</id>
+        <link href="https://www.rfc-editor.org/info/rfc10013/"/>
+        <updated>2026-07-30T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[The term "measured component" refers to an object within the attester's target environment whose state can be sampled and typically digested using a cryptographic hash function. Examples of measured components include firmware stored in flash memory, software loaded into memory at start time, data stored in a file system, or values in a CPU register. This document provides the information model for the measured component and two associated data models. This separation is intentional: The JSON and Concise Binary Object Representation (CBOR) serializations, coupled with the media types and associated Constrained Application Protocol (CoAP) Content-Formats, enable the immediate use of the semantics within the Entity Attestation Token (EAT) framework. Meanwhile, the information model can be reused in future specifications to provide additional serializations, for example, using ASN.1.]]></summary>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[RFC 10026: Operational Recommendations for DNSSEC Delegation Signer (DS) Automation]]></title>
+        <id>https://www.rfc-editor.org/info/rfc10026/</id>
+        <link href="https://www.rfc-editor.org/info/rfc10026/"/>
+        <updated>2026-07-23T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[Enabling support for automatic acceptance of DNSSEC Delegation Signer (DS) parameters from the Child DNS operator (via RFCs 7344, 8078, and 9615) requires the Parental Agent, often a registry or registrar, to make a number of technical decisions around acceptance checks, error and success reporting, and multi-party issues such as concurrent updates. This document describes recommendations about how these points are best addressed in practice.]]></summary>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[RFC 10004: Certificate Management over CMS (CMC): Compliance Requirements]]></title>
+        <id>https://www.rfc-editor.org/info/rfc10004/</id>
+        <link href="https://www.rfc-editor.org/info/rfc10004/"/>
+        <updated>2026-07-17T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[<p>This document provides a set of compliance statements about the Certificate Management over CMS (CMC) enrollment protocol. The ASN.1 structures and the transport mechanisms for the CMC enrollment protocol are covered in other documents (RFCs 10002 and 10003). This document provides the information needed to make a compliant version of CMC.</p><p>This document obsoletes RFCs 5274 and 6402.</p>]]></summary>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[RFC 10003: Certificate Management over CMS (CMC): Transport Protocols]]></title>
+        <id>https://www.rfc-editor.org/info/rfc10003/</id>
+        <link href="https://www.rfc-editor.org/info/rfc10003/"/>
+        <updated>2026-07-17T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[<p>This document defines a number of transport mechanisms that are used to move Certificate Management over CMS (CMC) messages. The transport mechanisms described in this document are HTTP, file, mail, and TCP.</p><p>This document obsoletes RFCs 5273 and 6402.</p>]]></summary>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[RFC 10002: Certificate Management over CMS (CMC)]]></title>
+        <id>https://www.rfc-editor.org/info/rfc10002/</id>
+        <link href="https://www.rfc-editor.org/info/rfc10002/"/>
+        <updated>2026-07-17T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[<p>This document defines the base syntax for CMC, a Certificate Management protocol using the Cryptographic Message Syntax (CMS). This protocol addresses two immediate needs within the Internet Public Key Infrastructure (PKI) community:</p><p>CMC also requires the use of the transport document (RFC 10003) and the requirements usage document (RFC 10004) along with this document for a full definition.</p><p>This document obsoletes RFCs 5272 and 6402.</p>]]></summary>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[RFC 10015: Deprecating Obsolete Key Exchange Methods in TLS 1.2 and DTLS 1.2]]></title>
+        <id>https://www.rfc-editor.org/info/rfc10015/</id>
+        <link href="https://www.rfc-editor.org/info/rfc10015/"/>
+        <updated>2026-07-16T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[<p>For (D)TLS 1.2, this document deprecates the use of two key exchanges, namely Diffie-Hellman (DH) over a finite field and RSA. It also discourages the use of static Elliptic Curve Diffie-Hellman (ECDH) cipher suites.</p><p>These prescriptions apply only to (D)TLS 1.2, since (D)TLS 1.0 and TLS 1.1 are deprecated by RFC 8996 and (D)TLS 1.3 either does not use the affected algorithms or does not share the relevant configuration options. (There is no DTLS version 1.1.)</p><p>This document updates RFCs 4162, 4279, 4346, 4785, 5246, 5288, 5289, 5469, 5487, 5932, 6209, 6347, 6367, 6655, 7905, 8422, and 9325 to either deprecate or discourage the use of cipher suites using the above key exchange methods in (D)TLS 1.2 connections.</p>]]></summary>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[RFC 10014: Guidelines for Characterizing the Term "OAM"]]></title>
+        <id>https://www.rfc-editor.org/info/rfc10014/</id>
+        <link href="https://www.rfc-editor.org/info/rfc10014/"/>
+        <updated>2026-06-30T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[<p>As the IETF continues to produce and standardize different Operations, Administration, and Maintenance (OAM) protocols and technologies, various qualifiers and modifiers are prepended to the OAM abbreviation. While, at first glance, the most used qualifiers appear to be well understood, the same qualifier may be interpreted differently in different contexts. A case in point is the qualifiers "in-band" and "out-of-band", which have their origins in the radio lexicon, and which have been extrapolated into other communication networks. This document recommends not to use these two terms when referring to OAM.</p><p>This document considers some common qualifiers and modifiers that are prepended, within the context of packet networks, to the OAM abbreviation and lays out guidelines for their use in IETF documents.</p><p>This document extends RFC 6291 by adding to the guidelines for the use of the term "OAM" with qualifiers. It does not modify any part of RFC 6291.</p>]]></summary>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[RFC 10007: Clarification to Processing Key Usage Values During Certificate Revocation List (CRL) Validation]]></title>
+        <id>https://www.rfc-editor.org/info/rfc10007/</id>
+        <link href="https://www.rfc-editor.org/info/rfc10007/"/>
+        <updated>2026-06-30T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[RFC 5280 defines the profile of X.509 certificates and Certificate Revocation Lists (CRLs) for use in the Internet. Section 4.2.1.3 of RFC 5280 requires CRL issuer certificates to contain the keyUsage extension with the cRLSign bit asserted. However, the CRL validation algorithm specified in Section 6.3 of RFC 5280 does not explicitly include a corresponding check for the presence of the keyUsage certificate extension. This document updates RFC 5280 to require that check.]]></summary>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[RFC 10005: BGP Link Bandwidth Extended Community]]></title>
+        <id>https://www.rfc-editor.org/info/rfc10005/</id>
+        <link href="https://www.rfc-editor.org/info/rfc10005/"/>
+        <updated>2026-06-26T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[This document defines a BGP extended community, the Link Bandwidth Extended Community, which carries bandwidth information to enable weighted load-balancing in multipath scenarios. It specifies the format and processing rules for this extended community type.]]></summary>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[RFC 10008: The HTTP QUERY Method]]></title>
+        <id>https://www.rfc-editor.org/info/rfc10008/</id>
+        <link href="https://www.rfc-editor.org/info/rfc10008/"/>
+        <updated>2026-06-15T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[This specification defines the QUERY method for HTTP. A QUERY requests that the request target process the enclosed content in a safe and idempotent manner and then respond with the result of that processing. This is similar to POST requests, but QUERY requests can be automatically repeated or restarted without concern for partial state changes.]]></summary>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[RFC 9804: Simple Public Key Infrastructure (SPKI) S-Expressions]]></title>
+        <id>https://www.rfc-editor.org/info/rfc9804/</id>
+        <link href="https://www.rfc-editor.org/info/rfc9804/"/>
+        <updated>2025-06-17T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[This memo specifies the data structure representation that was devised to support Simple Public Key Infrastructure (SPKI) certificates, as detailed in RFC 2692, with the intent that it be more widely applicable.  It has been and is being used elsewhere.  There are multiple implementations in a variety of programming languages.  Uses of this representation are referred to in this document as "S-expressions".  This memo makes precise the encodings of these SPKI S-expressions: It gives a "canonical form" for them, describes two "transport" representations, and also describes an "advanced" format for display to people.]]></summary>
+    </entry>
+</feed>"
+`;
+
+exports[`feeds (rss, atom) 2`] = `
+"<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+    <channel>
+        <title>Recent RFCs</title>
+        <link>https://www.rfc-editor.org</link>
+        <description>Recently published RFCs</description>
+        <lastBuildDate>Fri, 01 Feb 2030 00:00:00 GMT</lastBuildDate>
+        <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
+        <generator>https://www.npmjs.com/package/feed</generator>
+        <language>en-us</language>
+        <item>
+            <title><![CDATA[RFC 10029: DNS Multiple QTYPEs]]></title>
+            <link>https://www.rfc-editor.org/info/rfc10029/</link>
+            <guid isPermaLink="true">https://www.rfc-editor.org/info/rfc10029/</guid>
+            <pubDate>Fri, 31 Jul 2026 00:00:00 GMT</pubDate>
+            <description><![CDATA[This document specifies a method for a DNS client to request additional DNS record types to be delivered alongside the primary record type specified in the Question section of a DNS QUERY (OpCode=0).]]></description>
+        </item>
+        <item>
+            <title><![CDATA[RFC 10022: IMAP UIDBATCHES Extension]]></title>
+            <link>https://www.rfc-editor.org/info/rfc10022/</link>
+            <guid isPermaLink="true">https://www.rfc-editor.org/info/rfc10022/</guid>
+            <pubDate>Fri, 31 Jul 2026 00:00:00 GMT</pubDate>
+            <description><![CDATA[The UIDBATCHES extension of the Internet Message Access Protocol (IMAP) allows clients to retrieve Unique Identifier (UID) ranges that partition a mailbox's messages into equally sized batches. This enables clients to perform operations such as FETCH, SEARCH, and STORE on specific message batches, providing better control over resource usage and response sizes. The extension is particularly useful with the UIDONLY mode where sequence numbers are unavailable.]]></description>
+        </item>
+        <item>
+            <title><![CDATA[RFC 10023: The "_for-sale" Underscored and Globally Scoped DNS Node Name]]></title>
+            <link>https://www.rfc-editor.org/info/rfc10023/</link>
+            <guid isPermaLink="true">https://www.rfc-editor.org/info/rfc10023/</guid>
+            <pubDate>Thu, 30 Jul 2026 00:00:00 GMT</pubDate>
+            <description><![CDATA[<p>This document defines an operational convention that uses the</p><p>reserved underscored DNS leaf node name "_for-sale" to indicate the</p><p>parent domain name is available for purchase.</p><p>The convention can be deployed without disrupting existing</p><p>operations, and it may be applied even when the domain name is still</p><p>actively in use.</p>]]></description>
+        </item>
+        <item>
+            <title><![CDATA[RFC 10019: Zeroconf Multicast Address Allocation Problem Statement and Requirements]]></title>
+            <link>https://www.rfc-editor.org/info/rfc10019/</link>
+            <guid isPermaLink="true">https://www.rfc-editor.org/info/rfc10019/</guid>
+            <pubDate>Thu, 30 Jul 2026 00:00:00 GMT</pubDate>
+            <description><![CDATA[<p>This document surveys current problems with existing protocols for automatically assigning multicast IP addresses in zero-configuration (zeroconf) networking environments. It addresses key challenges, such as link-layer address collisions, hardware limitations, multicast snooping inefficiencies, and the need to avoid manual configuration. Based on these challenges, it derives requirements for a lightweight, decentralized solution for dynamically allocating unique multicast group addresses without central coordination.</p><p>The document presents explicit requirements covering discovery, allocation, conflict detection and resolution, and lease management. It also evaluates considerations specific to IPv6 and IPv4 multicast address ranges, and identifies approaches that are unsuited for zeroconf deployment. This foundation serves as a reference for developing future solutions for multicast address allocation that operate autonomously within local networks.</p>]]></description>
+        </item>
+        <item>
+            <title><![CDATA[RFC 10013: Entity Attestation Token (EAT) Measured Component]]></title>
+            <link>https://www.rfc-editor.org/info/rfc10013/</link>
+            <guid isPermaLink="true">https://www.rfc-editor.org/info/rfc10013/</guid>
+            <pubDate>Thu, 30 Jul 2026 00:00:00 GMT</pubDate>
+            <description><![CDATA[The term "measured component" refers to an object within the attester's target environment whose state can be sampled and typically digested using a cryptographic hash function. Examples of measured components include firmware stored in flash memory, software loaded into memory at start time, data stored in a file system, or values in a CPU register. This document provides the information model for the measured component and two associated data models. This separation is intentional: The JSON and Concise Binary Object Representation (CBOR) serializations, coupled with the media types and associated Constrained Application Protocol (CoAP) Content-Formats, enable the immediate use of the semantics within the Entity Attestation Token (EAT) framework. Meanwhile, the information model can be reused in future specifications to provide additional serializations, for example, using ASN.1.]]></description>
+        </item>
+        <item>
+            <title><![CDATA[RFC 10026: Operational Recommendations for DNSSEC Delegation Signer (DS) Automation]]></title>
+            <link>https://www.rfc-editor.org/info/rfc10026/</link>
+            <guid isPermaLink="true">https://www.rfc-editor.org/info/rfc10026/</guid>
+            <pubDate>Thu, 23 Jul 2026 00:00:00 GMT</pubDate>
+            <description><![CDATA[Enabling support for automatic acceptance of DNSSEC Delegation Signer (DS) parameters from the Child DNS operator (via RFCs 7344, 8078, and 9615) requires the Parental Agent, often a registry or registrar, to make a number of technical decisions around acceptance checks, error and success reporting, and multi-party issues such as concurrent updates. This document describes recommendations about how these points are best addressed in practice.]]></description>
+        </item>
+        <item>
+            <title><![CDATA[RFC 10004: Certificate Management over CMS (CMC): Compliance Requirements]]></title>
+            <link>https://www.rfc-editor.org/info/rfc10004/</link>
+            <guid isPermaLink="true">https://www.rfc-editor.org/info/rfc10004/</guid>
+            <pubDate>Fri, 17 Jul 2026 00:00:00 GMT</pubDate>
+            <description><![CDATA[<p>This document provides a set of compliance statements about the Certificate Management over CMS (CMC) enrollment protocol. The ASN.1 structures and the transport mechanisms for the CMC enrollment protocol are covered in other documents (RFCs 10002 and 10003). This document provides the information needed to make a compliant version of CMC.</p><p>This document obsoletes RFCs 5274 and 6402.</p>]]></description>
+        </item>
+        <item>
+            <title><![CDATA[RFC 10003: Certificate Management over CMS (CMC): Transport Protocols]]></title>
+            <link>https://www.rfc-editor.org/info/rfc10003/</link>
+            <guid isPermaLink="true">https://www.rfc-editor.org/info/rfc10003/</guid>
+            <pubDate>Fri, 17 Jul 2026 00:00:00 GMT</pubDate>
+            <description><![CDATA[<p>This document defines a number of transport mechanisms that are used to move Certificate Management over CMS (CMC) messages. The transport mechanisms described in this document are HTTP, file, mail, and TCP.</p><p>This document obsoletes RFCs 5273 and 6402.</p>]]></description>
+        </item>
+        <item>
+            <title><![CDATA[RFC 10002: Certificate Management over CMS (CMC)]]></title>
+            <link>https://www.rfc-editor.org/info/rfc10002/</link>
+            <guid isPermaLink="true">https://www.rfc-editor.org/info/rfc10002/</guid>
+            <pubDate>Fri, 17 Jul 2026 00:00:00 GMT</pubDate>
+            <description><![CDATA[<p>This document defines the base syntax for CMC, a Certificate Management protocol using the Cryptographic Message Syntax (CMS). This protocol addresses two immediate needs within the Internet Public Key Infrastructure (PKI) community:</p><p>CMC also requires the use of the transport document (RFC 10003) and the requirements usage document (RFC 10004) along with this document for a full definition.</p><p>This document obsoletes RFCs 5272 and 6402.</p>]]></description>
+        </item>
+        <item>
+            <title><![CDATA[RFC 10015: Deprecating Obsolete Key Exchange Methods in TLS 1.2 and DTLS 1.2]]></title>
+            <link>https://www.rfc-editor.org/info/rfc10015/</link>
+            <guid isPermaLink="true">https://www.rfc-editor.org/info/rfc10015/</guid>
+            <pubDate>Thu, 16 Jul 2026 00:00:00 GMT</pubDate>
+            <description><![CDATA[<p>For (D)TLS 1.2, this document deprecates the use of two key exchanges, namely Diffie-Hellman (DH) over a finite field and RSA. It also discourages the use of static Elliptic Curve Diffie-Hellman (ECDH) cipher suites.</p><p>These prescriptions apply only to (D)TLS 1.2, since (D)TLS 1.0 and TLS 1.1 are deprecated by RFC 8996 and (D)TLS 1.3 either does not use the affected algorithms or does not share the relevant configuration options. (There is no DTLS version 1.1.)</p><p>This document updates RFCs 4162, 4279, 4346, 4785, 5246, 5288, 5289, 5469, 5487, 5932, 6209, 6347, 6367, 6655, 7905, 8422, and 9325 to either deprecate or discourage the use of cipher suites using the above key exchange methods in (D)TLS 1.2 connections.</p>]]></description>
+        </item>
+        <item>
+            <title><![CDATA[RFC 10014: Guidelines for Characterizing the Term "OAM"]]></title>
+            <link>https://www.rfc-editor.org/info/rfc10014/</link>
+            <guid isPermaLink="true">https://www.rfc-editor.org/info/rfc10014/</guid>
+            <pubDate>Tue, 30 Jun 2026 00:00:00 GMT</pubDate>
+            <description><![CDATA[<p>As the IETF continues to produce and standardize different Operations, Administration, and Maintenance (OAM) protocols and technologies, various qualifiers and modifiers are prepended to the OAM abbreviation. While, at first glance, the most used qualifiers appear to be well understood, the same qualifier may be interpreted differently in different contexts. A case in point is the qualifiers "in-band" and "out-of-band", which have their origins in the radio lexicon, and which have been extrapolated into other communication networks. This document recommends not to use these two terms when referring to OAM.</p><p>This document considers some common qualifiers and modifiers that are prepended, within the context of packet networks, to the OAM abbreviation and lays out guidelines for their use in IETF documents.</p><p>This document extends RFC 6291 by adding to the guidelines for the use of the term "OAM" with qualifiers. It does not modify any part of RFC 6291.</p>]]></description>
+        </item>
+        <item>
+            <title><![CDATA[RFC 10007: Clarification to Processing Key Usage Values During Certificate Revocation List (CRL) Validation]]></title>
+            <link>https://www.rfc-editor.org/info/rfc10007/</link>
+            <guid isPermaLink="true">https://www.rfc-editor.org/info/rfc10007/</guid>
+            <pubDate>Tue, 30 Jun 2026 00:00:00 GMT</pubDate>
+            <description><![CDATA[RFC 5280 defines the profile of X.509 certificates and Certificate Revocation Lists (CRLs) for use in the Internet. Section 4.2.1.3 of RFC 5280 requires CRL issuer certificates to contain the keyUsage extension with the cRLSign bit asserted. However, the CRL validation algorithm specified in Section 6.3 of RFC 5280 does not explicitly include a corresponding check for the presence of the keyUsage certificate extension. This document updates RFC 5280 to require that check.]]></description>
+        </item>
+        <item>
+            <title><![CDATA[RFC 10005: BGP Link Bandwidth Extended Community]]></title>
+            <link>https://www.rfc-editor.org/info/rfc10005/</link>
+            <guid isPermaLink="true">https://www.rfc-editor.org/info/rfc10005/</guid>
+            <pubDate>Fri, 26 Jun 2026 00:00:00 GMT</pubDate>
+            <description><![CDATA[This document defines a BGP extended community, the Link Bandwidth Extended Community, which carries bandwidth information to enable weighted load-balancing in multipath scenarios. It specifies the format and processing rules for this extended community type.]]></description>
+        </item>
+        <item>
+            <title><![CDATA[RFC 10008: The HTTP QUERY Method]]></title>
+            <link>https://www.rfc-editor.org/info/rfc10008/</link>
+            <guid isPermaLink="true">https://www.rfc-editor.org/info/rfc10008/</guid>
+            <pubDate>Mon, 15 Jun 2026 00:00:00 GMT</pubDate>
+            <description><![CDATA[This specification defines the QUERY method for HTTP. A QUERY requests that the request target process the enclosed content in a safe and idempotent manner and then respond with the result of that processing. This is similar to POST requests, but QUERY requests can be automatically repeated or restarted without concern for partial state changes.]]></description>
+        </item>
+        <item>
+            <title><![CDATA[RFC 9804: Simple Public Key Infrastructure (SPKI) S-Expressions]]></title>
+            <link>https://www.rfc-editor.org/info/rfc9804/</link>
+            <guid isPermaLink="true">https://www.rfc-editor.org/info/rfc9804/</guid>
+            <pubDate>Tue, 17 Jun 2025 00:00:00 GMT</pubDate>
+            <description><![CDATA[This memo specifies the data structure representation that was devised to support Simple Public Key Infrastructure (SPKI) certificates, as detailed in RFC 2692, with the intent that it be more widely applicable.  It has been and is being used elsewhere.  There are multiple implementations in a variety of programming languages.  Uses of this representation are referred to in this document as "S-expressions".  This memo makes precise the encodings of these SPKI S-expressions: It gives a "canonical form" for them, describes two "transport" representations, and also describes an "advanced" format for display to people.]]></description>
+        </item>
+    </channel>
+</rss>"
+`;

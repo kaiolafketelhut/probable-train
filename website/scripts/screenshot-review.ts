@@ -1,0 +1,148 @@
+/**
+ * Builds a single local HTML page for reviewing screenshot comparisons.
+ *
+ * A failing comparison in e2e/utilities/screenshot.ts writes the capture to e2e/screenshots/actual/
+ * and a highlighted diff to e2e/screenshots/diff/, beside the committed baseline. Reading three
+ * full-page PNGs side by side in a file browser is slow, so this lays every changed capture out as
+ * baseline, actual and diff columns with an onion-skin slider to slide one over the other.
+ *
+ * e2e/utilities/global-setup.ts rebuilds this page in its teardown, so every e2e run leaves a
+ * current one behind whether it passed or failed. To rebuild it by hand and open the printed path:
+ *
+ *   npm run test:e2e:review
+ *
+ * Those two directories hold only the most recent run's mismatches: e2e/utilities/global-setup.ts
+ * empties them as each run starts, so whatever is in them belongs to the run just finished.
+ *
+ * Nothing is served and nothing leaves the machine; the page references the PNGs by relative path.
+ */
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const SCREENSHOTS_DIR = fileURLToPath(new URL('../e2e/screenshots/', import.meta.url))
+const OUTPUT_PATH = path.join(SCREENSHOTS_DIR, 'review.html')
+
+type Comparison = {
+  name: string
+  baseline: string | undefined
+  actual: string | undefined
+  diff: string | undefined
+}
+
+const pngsIn = (dir: string): string[] => {
+  const full = path.join(SCREENSHOTS_DIR, dir)
+  if (!fs.existsSync(full)) {
+    return []
+  }
+  return fs
+    .readdirSync(full)
+    .filter((file) => file.endsWith('.png'))
+    .toSorted()
+}
+
+const comparisons = (): Comparison[] => {
+  const names = new Set<string>([...pngsIn('baseline'), ...pngsIn('actual'), ...pngsIn('diff')])
+  const has = (dir: string, file: string): string | undefined =>
+    fs.existsSync(path.join(SCREENSHOTS_DIR, dir, file)) ? `${dir}/${file}` : undefined
+  return [...names].toSorted().map((file) => ({
+    name: file.replace(/\.png$/, ''),
+    baseline: has('baseline', file),
+    actual: has('actual', file),
+    diff: has('diff', file)
+  }))
+}
+
+const escapeHtml = (text: string): string =>
+  text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
+
+const image = (src: string | undefined, label: string): string =>
+  src
+    ? `<figure><figcaption>${label}</figcaption><img src="${escapeHtml(src)}" alt="${escapeHtml(label)}" loading="lazy"></figure>`
+    : `<figure><figcaption>${label}</figcaption><p class="missing">none</p></figure>`
+
+const onionSkin = (comparison: Comparison): string => {
+  if (!comparison.baseline || !comparison.actual) {
+    return ''
+  }
+  return `
+    <details>
+      <summary>Overlay: slide baseline over actual</summary>
+      <label>Actual opacity <input type="range" min="0" max="100" value="50" oninput="this.closest('details').querySelector('.over').style.opacity = this.value / 100"></label>
+      <div class="onion">
+        <img src="${escapeHtml(comparison.baseline)}" alt="baseline" loading="lazy">
+        <img class="over" src="${escapeHtml(comparison.actual)}" alt="actual" loading="lazy">
+      </div>
+    </details>`
+}
+
+/* Collapsed by default: a full-page capture of a long RFC is tens of megabytes, and a closed
+   disclosure's content is not rendered, so its lazy images stay unloaded until the reader opens it. */
+const section = (comparison: Comparison): string => `
+  <details class="comparison" id="${escapeHtml(comparison.name)}">
+    <summary><h2>${escapeHtml(comparison.name)} <small>differs from baseline</small></h2></summary>
+    <div class="columns">${image(comparison.baseline, 'Baseline (before)')}${image(comparison.actual, 'Actual (after)')}${image(comparison.diff, 'Diff')}</div>
+    ${onionSkin(comparison)}
+  </details>`
+
+const page = (all: Comparison[]): string => {
+  const changed = all.filter((comparison) => comparison.actual !== undefined)
+  const nav = changed
+    .map((comparison) => `<li><a href="#${escapeHtml(comparison.name)}">${escapeHtml(comparison.name)}</a></li>`)
+    .join('')
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Screenshot review</title>
+<style>
+  body { font: 14px system-ui, sans-serif; margin: 1.5rem; color: #222; background: #fafafa; }
+  h1 small, h2 small { font-weight: normal; color: #666; margin-left: .5em; }
+  nav ul { columns: 3; padding-left: 1.2em; }
+  .comparison { margin: 1rem 0; padding-top: 1rem; border-top: 1px solid #ddd; }
+  .comparison > summary { cursor: pointer; }
+  .comparison > summary h2 { display: inline; margin: 0; }
+  .columns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; align-items: start; }
+  figure { margin: 0; }
+  figcaption { font-weight: 600; margin-bottom: .4rem; }
+  img { max-width: 100%; border: 1px solid #ccc; background: #fff; }
+  .missing { color: #999; }
+  details { margin-top: 1rem; }
+  .onion { position: relative; max-width: 1280px; }
+  .onion img { display: block; width: 100%; }
+  .onion .over { position: absolute; inset: 0; opacity: .5; }
+  label { display: inline-block; margin: .5rem 0; }
+</style>
+</head>
+<body>
+<h1>Screenshot review <small>${changed.length} changed, ${all.length - changed.length} unchanged</small></h1>
+<p>Generated by <code>scripts/screenshot-review.ts</code> from <code>e2e/screenshots/</code>. Only captures the
+last e2e run failed appear here; a capture that passed, or that the run did not cover, is counted as
+unchanged. Re-record with <code>npm run test:e2e:update-screenshots</code> once the changes are accepted.</p>
+${changed.length ? `<nav><ul>${nav}</ul></nav>` : '<p>No changed captures. Run the e2e project first.</p>'}
+${changed.map(section).join('\n')}
+</body>
+</html>
+`
+}
+
+/**
+ * Rebuilds the review page from whatever is in e2e/screenshots/ and reports what it found.
+ *
+ * e2e/utilities/global-setup.ts calls this in its teardown so the page is rebuilt by the run
+ * itself, rather than by a caller who has to remember to.
+ */
+export const writeScreenshotReview = (): { outputPath: string; changed: number; total: number } => {
+  const all = comparisons()
+  fs.writeFileSync(OUTPUT_PATH, page(all))
+  return {
+    outputPath: OUTPUT_PATH,
+    changed: all.filter(({ actual }) => actual !== undefined).length,
+    total: all.length
+  }
+}
+
+if (import.meta.main) {
+  const { outputPath, changed, total } = writeScreenshotReview()
+  console.log(`${outputPath}\n${changed} changed, ${total} total`)
+}

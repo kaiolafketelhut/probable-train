@@ -1,0 +1,225 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`homepage latest RFCs 1`] = `
+{
+  "homepageLatest": [
+    {
+      "abstract": "This document specifies a method for a DNS client to request additional DNS record types to be delivered alongside the primary record type specified in the Question section of a DNS QUERY (OpCode=0).",
+      "area": {
+        "acronym": "int",
+        "name": "Internet Area",
+      },
+      "authors": [
+        {
+          "affiliation": "Internet Systems Consortium, Inc.",
+          "country": "",
+          "datatracker_person_path": "/person/Ray%20Bellis",
+          "email": "ray@bellis.me.uk",
+          "is_editor": false,
+          "person": 109059,
+          "titlepage_name": "R. Bellis",
+        },
+      ],
+      "formats": [
+        {
+          "format": "xml",
+        },
+        {
+          "format": "txt",
+        },
+        {
+          "format": "html",
+        },
+        {
+          "format": "pdf",
+        },
+        {
+          "format": "json",
+        },
+      ],
+      "group": {
+        "acronym": "dnssd",
+        "name": "Extensions for Scalable DNS Service Discovery",
+        "state": "active",
+        "type": "wg",
+      },
+      "identifiers": [
+        {
+          "type": "doi",
+          "value": "10.17487/RFC10029",
+        },
+      ],
+      "keywords": [
+        "DNS",
+        "resource records",
+      ],
+      "number": 10029,
+      "obsoleted_by": [],
+      "obsoletes": [],
+      "pages": 12,
+      "published": "2026-07-31",
+      "status": {
+        "name": "proposed standard",
+        "slug": "ps",
+      },
+      "stream": {
+        "description": "Internet Engineering Task Force (IETF)",
+        "name": "IETF",
+        "slug": "IETF",
+      },
+      "subseries": [],
+      "title": "DNS Multiple QTYPEs",
+      "updated_by": [],
+      "updates": [],
+    },
+    {
+      "abstract": "The UIDBATCHES extension of the Internet Message Access Protocol (IMAP) allows clients to retrieve Unique Identifier (UID) ranges that partition a mailbox's messages into equally sized batches. This enables clients to perform operations such as FETCH, SEARCH, and STORE on specific message batches, providing better control over resource usage and response sizes. The extension is particularly useful with the UIDONLY mode where sequence numbers are unavailable.",
+      "area": {
+        "acronym": "art",
+        "name": "Applications and Real-Time Area",
+      },
+      "authors": [
+        {
+          "affiliation": "Apple Inc",
+          "country": "",
+          "datatracker_person_path": "/person/Daniel%20Eggert",
+          "email": "deggert@apple.com",
+          "is_editor": true,
+          "person": 137791,
+          "titlepage_name": "D. Eggert",
+        },
+      ],
+      "formats": [
+        {
+          "format": "xml",
+        },
+        {
+          "format": "txt",
+        },
+        {
+          "format": "html",
+        },
+        {
+          "format": "pdf",
+        },
+        {
+          "format": "json",
+        },
+      ],
+      "group": {
+        "acronym": "mailmaint",
+        "name": "Mail Maintenance",
+        "state": "active",
+        "type": "wg",
+      },
+      "identifiers": [
+        {
+          "type": "doi",
+          "value": "10.17487/RFC10022",
+        },
+      ],
+      "keywords": [
+        "IMAP",
+      ],
+      "number": 10022,
+      "obsoleted_by": [],
+      "obsoletes": [],
+      "pages": 14,
+      "published": "2026-07-31",
+      "status": {
+        "name": "proposed standard",
+        "slug": "ps",
+      },
+      "stream": {
+        "description": "Internet Engineering Task Force (IETF)",
+        "name": "IETF",
+        "slug": "IETF",
+      },
+      "subseries": [],
+      "title": "IMAP UIDBATCHES Extension",
+      "updated_by": [],
+      "updates": [],
+    },
+    {
+      "abstract": "This document defines an operational convention that uses the
+   reserved underscored DNS leaf node name "_for-sale" to indicate the
+   parent domain name is available for purchase.
+
+   The convention can be deployed without disrupting existing
+   operations, and it may be applied even when the domain name is still
+   actively in use.",
+      "area": {
+        "acronym": "gen",
+        "name": "General Area",
+      },
+      "authors": [
+        {
+          "affiliation": "SIDN Labs",
+          "country": "",
+          "datatracker_person_path": "/person/Marco%20Davids",
+          "email": "marco.davids@sidn.nl",
+          "is_editor": false,
+          "person": 113569,
+          "titlepage_name": "M. Davids",
+        },
+      ],
+      "formats": [
+        {
+          "format": "xml",
+        },
+        {
+          "format": "txt",
+        },
+        {
+          "format": "html",
+        },
+        {
+          "format": "pdf",
+        },
+        {
+          "format": "json",
+        },
+      ],
+      "group": {
+        "acronym": "none",
+        "name": "Individual Submissions",
+        "state": "active",
+        "type": "individ",
+      },
+      "identifiers": [
+        {
+          "type": "doi",
+          "value": "10.17487/RFC10023",
+        },
+      ],
+      "keywords": [
+        "domain name system",
+        "domain sale",
+        "domain brokerage",
+        "domain aftermarket",
+        "TXT record",
+        "attrleaf",
+      ],
+      "number": 10023,
+      "obsoleted_by": [],
+      "obsoletes": [],
+      "pages": 18,
+      "published": "2026-07-30",
+      "status": {
+        "name": "informational",
+        "slug": "inf",
+      },
+      "stream": {
+        "description": "Internet Engineering Task Force (IETF)",
+        "name": "IETF",
+        "slug": "IETF",
+      },
+      "subseries": [],
+      "title": "The "_for-sale" Underscored and Globally Scoped DNS Node Name",
+      "updated_by": [],
+      "updates": [],
+    },
+  ],
+  "timestampIso": "2025-01-14T00:00:00.000Z",
+}
+`;

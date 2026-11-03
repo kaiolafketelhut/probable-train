@@ -1,0 +1,83 @@
+import { NuxtLink } from '#components'
+import { parseSeriesId } from './rfc'
+import type { RfcCommon } from './rfc-validators'
+import { NONBREAKING_SPACE } from './strings'
+import { infoSeriesPathBuilder } from './url'
+import { getVNodeText } from './vue'
+
+/**
+ * Formats a string of 'RFCnumber' with non-bold/bold text with an NBSP between
+ * Returns h() Component for rendering
+ */
+export const formatTitleAsVNode = (rfcId: string, hasTrailingColon?: boolean): VNode => {
+  const parts = parseSeriesId(rfcId)
+
+  if (parts === undefined) {
+    return h('span')
+  }
+
+  return h('span', [
+    h('span', { class: 'font-medium' }, parts.type.toUpperCase()),
+    NONBREAKING_SPACE,
+    h('span', { class: 'font-bold' }, parts.number),
+    hasTrailingColon ? ':' : undefined
+  ])
+}
+
+export const hasSubseries = (rfc: RfcCommon) => Boolean(rfc.subseries && rfc.subseries.length > 0)
+
+export const formatSubseriesAsVNode = (rfc: RfcCommon, hasTrailingColon: boolean, hasUnderline: boolean): VNode => {
+  const { subseries } = rfc
+  if (!subseries || subseries.length === 0) {
+    return h('span')
+  }
+
+  return h(
+    'span',
+    subseries
+      .map((subseries) =>
+        h(
+          NuxtLink,
+          {
+            to: infoSeriesPathBuilder(`${subseries.type.toLowerCase()}${subseries.number}`),
+            class: [
+              !hasUnderline
+                ? 'no-underline'
+                : 'underline decoration-gray-500 hover:decoration-black focus:decoration:black dark:decoration-gray-400 dark:hover:decoration-white',
+              'relative z-100 hover:underline focus:underline py-3 rounded text-gray-800 dark:text-gray-300'
+            ],
+            title: `${subseries.type.toUpperCase()} ${subseries.number} contains RFC ${rfc.number}`
+          },
+          () => {
+            const title = formatTitleAsVNode(`${subseries.type}${subseries.number}`, hasTrailingColon)
+            return title
+          }
+        )
+      )
+      .reduce((acc, item, index, arr) => {
+        acc.push(item)
+        if (index < arr.length - 1) {
+          acc.push(h('span', ', '))
+        }
+        return acc
+      }, [] as VNode[])
+  )
+}
+
+const MINIMUM_HEADING_CHAR_WIDTH = 7
+
+const headingCharWidth = (rfc: RfcCommon): number => {
+  const rfcHasSubseries = hasSubseries(rfc)
+  const rfcTitle = getVNodeText(formatTitleAsVNode(`rfc${rfc.number}`, rfcHasSubseries))
+  const rfcSubseries = getVNodeText(formatSubseriesAsVNode(rfc, false, false))
+  return `${rfcTitle}${rfcHasSubseries ? ' ' : ''}${rfcSubseries}`.length
+}
+
+/**
+ * RFCCardCompact's heading column is sized in characters, via the `--computed-heading-char-length`
+ * custom property a caller sets on an ancestor of every card it draws — this is the widest heading
+ * among `rfcs` to give it, so every row's title column lines up rather than each card sizing its
+ * own.
+ */
+export const calculateMaxHeadingCharWidth = (rfcs: RfcCommon[]): number =>
+  Math.max(...rfcs.map(headingCharWidth), MINIMUM_HEADING_CHAR_WIDTH)

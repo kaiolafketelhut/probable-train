@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: red-precomputer-cron
+spec:
+  concurrencyPolicy: Forbid
+  schedule: "30 11,23 * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      # Terminate job if still running after 2 hours
+      activeDeadlineSeconds: 7200
+      # Delete finished job after a day
+      ttlSecondsAfterFinished: 86400
+      template:
+        spec:
+          securityContext:
+            runAsNonRoot: true
+          containers:
+            - name: red-precomputer
+              image: "ghcr.io/ietf-tools/red-precomputer:latest"
+              imagePullPolicy: Always
+              command: ['sh', '-c', 'node ./src/cron.ts']
+              envFrom:
+                - secretRef:
+                    name: red-secrets-env
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                  - ALL
+                readOnlyRootFilesystem: true
+                runAsUser: 1000
+                runAsGroup: 1000
+          restartPolicy: Never
+          terminationGracePeriodSeconds: 5

@@ -1,0 +1,284 @@
+<template>
+  <div class="min-h-[100vh]">
+    <NuxtLayout name="default">
+      <div class="container mx-auto pl-5 pr-3 pb-10">
+        <Breadcrumbs :breadcrumb-items="breadcrumbItems" />
+
+        <Heading level="1" class="mt-4 mb-4">RFCs by Subject</Heading>
+
+        <div class="flex flex-col lg:flex-row lg:gap-5">
+          <div class="lg:flex-3">
+            <div v-if="subjectsStatus === 'pending'" class="mt-10 w-full text-center">
+              <GraphicsLoading class="inline-block w-16 h-16" />
+            </div>
+
+            <Alert v-else-if="subjectsError" level="2" variant="warning" heading="Error">
+              <p class="pt-2">The list of subjects could not be loaded. Please try again.</p>
+              <p class="pt-2 text-sm">{{ httpErrorMessage(subjectsError) }}</p>
+            </Alert>
+
+            <template v-else-if="subjectCount > 0">
+              <div class="flex flex-row justify-between mt-2 mb-6 md:mb-0 print:hidden">
+                <SubjectFilter
+                  :id="filterDOMId"
+                  class="flex-1"
+                  v-model="filterQuery"
+                  :match-count="filteredSubjects.length"
+                  :total-count="subjectCount"
+                  :context-count="contextCount" />
+                <div class="flex flex-col justify-end">
+                  <SubjectsIndexDensity v-model="subjectDensity" />
+                </div>
+              </div>
+
+              <template v-if="filteredSubjects.length > 0">
+                <dl class="mt-2">
+                  <template v-for="subjectGroup in populatedSubjectGroups" :key="subjectGroup.id">
+                    <dt
+                      :id="subjectGroup.id"
+                      role="heading"
+                      aria-level="2"
+                      class="mb-0 bg-white dark:bg-gray-800 text-blue-950 dark:text-white text-2xl font-bold py-8 px-8">
+                      <GraphicsIETFMotif
+                        class="absolute -ml-4 -mt-4 print:hidden"
+                        :width="55"
+                        :height="55"
+                        :opacity="0.05" />
+                      {{ subjectGroup.title }}
+                    </dt>
+                    <dd class="mt-0">
+                      <div class="bg-white dark:bg-gray-800 px-8 pb-8">
+                        <SubjectTreeList
+                          :nodes="subjectGroup.items"
+                          :density="subjectDensity"
+                          :matches="matchesBySlug" />
+                      </div>
+                      <a
+                        :href="`#${filterDOMId}`"
+                        :class="[ANCHOR_COLOR_TAILWIND_STYLE, 'inline-flex gap-1 items-center px-1 py-5 text-sm']">
+                        <GraphicsArrowUp />
+                        Back to top</a
+                      >
+                    </dd>
+                  </template>
+                </dl>
+              </template>
+
+              <!-- Named rather than a bare "nothing found", because the filter is what emptied the page
+             and the reader needs to see which word did it. The box above still holds the query and
+             its clear button, so there is a way back from here. The table of contents and the
+             density control go with the list they describe, rather than standing over nothing. -->
+              <p v-else class="mt-2 bg-white dark:bg-gray-800 px-8 py-8">No subjects match “{{ filterQuery }}”.</p>
+            </template>
+
+            <!-- The vocabulary is curated by staff, so an empty one is a stage it passes through rather
+           than a sign that anything is wrong. -->
+            <p v-else class="mt-4">No subjects have been published yet.</p>
+          </div>
+          <div class="lg:flex-1">
+            <div class="bg-blue-25 dark:bg-blue-900 px-5 py-4">
+              <Heading level="2"> Are we missing a subject? </Heading>
+              <p class="mt-2 leading-[1.5]">
+                If you can't find it by filtering this list, you can
+                <Anchor :href="GITHUB_RFC_EDITOR_RFC_SUBJECT_TAGS_ISSUES_NEW_URL"
+                  >suggest a new subject on GitHub
+                  <GraphicsNewWindowIcon class="inline-block text-lg align-middle ml-1" /> </Anchor
+                >. Please include the new subject, one or more RFCs you believe it applies to, and any other information
+                that might be helpful. You may also send
+                <a :href="RFC_EDITOR_MAILTO">
+                  <GraphicsMail class="inline-block text-lg align-middle ml-1" />
+                  an email</a
+                >
+                with this information.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </NuxtLayout>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { watchDebounced } from '@vueuse/core'
+import { groupBy } from 'es-toolkit'
+import type { BreadcrumbItem } from '~/components/BreadcrumbsTypes'
+import { useUiSettingsStore, type SubjectDensity } from '~/stores/ui-settings'
+import { useRfcEditorHead } from '~/utilities/head'
+import { httpErrorMessage } from '~/utilities/network'
+import { fetchSubjectIndex } from '~/utilities/reef-precomputed'
+import { matchSubjects, type SubjectMatch } from '~/utilities/subject-search'
+import { isRenderableSubject, subjectTreeOfMatches, type SubjectNode } from '~/utilities/subject-tree'
+import { ANCHOR_COLOR_TAILWIND_STYLE } from '~/utilities/theme'
+import {
+  GITHUB_RFC_EDITOR_RFC_SUBJECT_TAGS_ISSUES_NEW_URL,
+  HOME_PATH,
+  RFC_EDITOR_MAILTO,
+  SUBJECTS_PATH,
+  SUBJECTS_QUERY_PARAM,
+  usePublicSiteUrlOrigin
+} from '~/utilities/url'
+
+definePageMeta({
+  layout: false
+})
+
+// Static rather than derived: unlike a single subject's page, the index has no ancestors to name,
+// just itself under Home.
+const breadcrumbItems: BreadcrumbItem[] = [{ url: HOME_PATH, label: 'Home' }, { label: 'RFCs by Subject' }]
+
+const filterDOMId = 'filter'
+
+const publicSiteUrlOrigin = usePublicSiteUrlOrigin()
+
+const canonicalPath = SUBJECTS_PATH
+
+const route = useRoute()
+
+if (
+  // only compare route.path not route.fullPath as that will clobber ?search#id params
+  route.path !== canonicalPath
+) {
+  await navigateTo({
+    path: canonicalPath
+  })
+}
+
+// Reads through the store rather than holding its own copy, so the control shows the saved
+// preference and every change is written back to localStorage.
+const uiSettings = useUiSettingsStore()
+const subjectDensity = computed<SubjectDensity>({
+  get: () => uiSettings.subjectDensity,
+  set: (density) => uiSettings.setSubjectDensity(density)
+})
+
+// The published index rather than Reef's API: this page is server-rendered, and a server render
+// reads the store and never calls Reef. The file lists the vocabulary in tree order and is small
+// enough to arrive whole, so the hierarchy is built from this one answer with nothing to page.
+//
+// Keyed by slug there, a list here, because the slug is a field everything downstream reads off a
+// subject rather than a key it has been handed separately. Object.entries keeps insertion order,
+// which is the tree order the file was written in.
+const {
+  data: subjects,
+  status: subjectsStatus,
+  error: subjectsError
+} = await useAsyncData(async () => {
+  const index = await fetchSubjectIndex()
+  return Object.entries(index.subjects).map(([slug, entry]) => ({ ...entry, slug }))
+})
+
+// The vocabulary can nest deeper than the tree is drawn to, and a subject this page will not draw
+// is not one to count or to filter over either — otherwise a query matching only a subject too deep
+// to render announces matches and then shows an empty page.
+const renderableSubjects = computed(() => (subjects.value ?? []).filter(isRenderableSubject))
+
+const subjectCount = computed(() => renderableSubjects.value.length)
+
+// The filter lives in the URL so that a filtered view can be linked and stepped back out of. It is
+// read on the browser's side of the render only: the worker strips the query string from anything
+// it fetches from Nuxt, so a server render never sees the param even when the address bar carries
+// it. Reading it up front would therefore have the server draw the whole vocabulary and the client
+// hydrate a narrowed one over the top of it, which is a mismatch rather than a filter.
+const queryFromRoute = (): string => {
+  const param = route.query[SUBJECTS_QUERY_PARAM]
+  return (Array.isArray(param) ? param[0] : param) ?? ''
+}
+
+const filterQuery = ref('')
+
+onMounted(() => {
+  filterQuery.value = queryFromRoute()
+})
+
+// Back, forward, and anything else that changes the param without going through the box.
+watch(queryFromRoute, (query) => {
+  filterQuery.value = query
+})
+
+const URL_WRITE_DEBOUNCE_MS = 300
+
+// Only the URL waits. Filtering itself happens on the keystroke, because the vocabulary is small
+// enough to search between one letter and the next and a list that lags the caret reads as broken.
+// Replaced rather than pushed so that typing a word leaves one entry behind instead of one a letter.
+watchDebounced(
+  filterQuery,
+  (query) => {
+    // A query that came from the URL is already in it. Writing it back would be a navigation that
+    // changes nothing, and on arrival that is every filtered link.
+    if (query === queryFromRoute()) return
+    void navigateTo(
+      { path: SUBJECTS_PATH, query: query.length > 0 ? { [SUBJECTS_QUERY_PARAM]: query } : {} },
+      { replace: true }
+    )
+  },
+  { debounce: URL_WRITE_DEBOUNCE_MS }
+)
+
+// What the reader is told about, and what the empty state is decided by: the subjects that actually
+// matched. The ancestors drawn around them below are context rather than matches, so they are not
+// here and are not counted.
+const subjectMatches = computed(() => matchSubjects(renderableSubjects.value, filterQuery.value))
+
+const filteredSubjects = computed(() => subjectMatches.value.map(({ subject }) => subject))
+
+// Keyed by slug for the list to look a row up by, and empty while nothing has been typed: an
+// unfiltered page has no matches to mark and no context to distinguish them from.
+const matchesBySlug = computed(() => {
+  if (!isFiltering.value) return new Map<string, SubjectMatch>()
+  return new Map(subjectMatches.value.map((match) => [match.subject.slug, match]))
+})
+
+const isFiltering = computed(() => filterQuery.value.trim().length > 0)
+
+// A match four levels down is drawn under the subjects it belongs to, so the tree carries the
+// ancestors of every match as well as the matches themselves.
+const subjectTree = computed(() => subjectTreeOfMatches(renderableSubjects.value, filteredSubjects.value))
+
+// The rows that are on the page without having been asked for. Counted off the tree rather than
+// worked out again, so it cannot disagree with what was drawn.
+const contextCount = computed(() => {
+  if (!isFiltering.value) return 0
+  const drawn = (nodes: SubjectNode[]): number => nodes.reduce((total, node) => total + 1 + drawn(node.children), 0)
+  return drawn(subjectTree.value) - filteredSubjects.value.length
+})
+
+type SubjectGroup = {
+  id: string
+  title: string
+  items: SubjectNode[]
+}
+
+const GROUP_NUM = '_subject_group_number'
+const GROUP_MISC = '_subject_group_miscellaneous'
+const ALPHABET = [...'abcdefghijklmnopqrstuvwxyz']
+const GROUP_TITLES: Record<string, string> = { [GROUP_NUM]: '0-9', [GROUP_MISC]: 'Other' }
+
+const groupIdOf = ({ name }: SubjectNode): string => {
+  const initial = name.trim().slice(0, 1).toLowerCase()
+  if (/\p{Nd}/u.test(initial)) return GROUP_NUM
+  return /\p{L}/u.test(initial) ? initial : GROUP_MISC
+}
+
+// Only the top of the tree is grouped by letter. A subject further down is found under the subject
+// it belongs to, which is the whole point of the hierarchy: filing it by its own initial as well
+// would list it twice and say that where it sits does not matter.
+//
+// Every letter is here whether or not anything is filed under it, because the table of contents
+// draws the empty ones too; the headings below take the populated ones.
+const subjectGroups = computed((): SubjectGroup[] => {
+  const itemsByGroupId = groupBy(subjectTree.value, groupIdOf)
+  const ids = [...ALPHABET, ...Object.keys(itemsByGroupId).filter((id) => !ALPHABET.includes(id))]
+
+  return ids.map((id) => ({ id, title: GROUP_TITLES[id] ?? id.toUpperCase(), items: itemsByGroupId[id] ?? [] }))
+})
+
+const populatedSubjectGroups = computed(() => subjectGroups.value.filter(({ items }) => items.length > 0))
+
+useRfcEditorHead({
+  title: 'RFCs organised by subject',
+  canonicalPath: `${publicSiteUrlOrigin}${canonicalPath}`,
+  description: 'Subjects such as networking, broadband, aerospace, authentication, cloud computing',
+  contentType: 'article'
+})
+</script>

@@ -1,0 +1,23 @@
+<template>
+  <component :is="formattedTitle" /><template v-if="!props.hideTitle">{{ SPACE }}{{ props.rfc.title }}</template>
+</template>
+
+<script setup lang="ts">
+import { formatTitleAsVNode } from '~/utilities/rfc-title'
+import { SPACE } from '~/utilities/strings'
+
+type Props = {
+  rfc: {
+    number: number
+    title: string
+  }
+  hideTitle?: boolean
+  hasTrailingColon?: boolean
+}
+
+const props = defineProps<Props>()
+
+const formattedTitle = computed(() =>
+  formatTitleAsVNode(`rfc${props.rfc.number}`, props.hasTrailingColon ?? !props.hideTitle)
+)
+</script>

@@ -1,0 +1,106 @@
+<template>
+  <ToastProvider v-for="position in activePositions" :key="position" swipe-direction="right">
+    <ToastRoot
+      v-for="notification in notificationsAt(position)"
+      :key="notification.id"
+      :type="notification.type ?? 'background'"
+      :open="true"
+      :duration="notification.durationMs ?? DEFAULT_TOAST_DURATION_MS"
+      class="data-[state=closed]:animate-none data-[swipe=end]:translate-x-full relative flex flex-col gap-1 bg-white dark:bg-black text-black dark:text-white border-1 border-gray-300 dark:border-gray-500 shadow-2xl rounded-xs px-1 py-3"
+      @update:open="(isOpen: boolean) => !isOpen && hide(notification.id)">
+      <ToastTitle class="font-bold text-sm pl-2 pr-10">
+        {{ notification.title }}
+      </ToastTitle>
+      <ToastDescription v-if="notification.description?.trim()" class="pl-2 text-sm">
+        {{ notification.description }}
+      </ToastDescription>
+      <div
+        v-if="notification.url || notification.allowDismiss"
+        class="w-full flex flex-row justify-between items-center pl-2 pt-2">
+        <ToastAction v-if="notification.url" as-child :alt-text="`Go to ${notification.title}`">
+          <Anchor
+            :href="normalisedUrls.get(notification.id)"
+            class="text-sm underline hover:bg-gray-100 focus:bg-gray-100 dark:hover:bg-gray-800 dark:focus:bg-gray-800 -ml-2 px-2 py-1"
+            @click="dismiss(notification)">
+            {{ notification.readMoreText || 'Read more' }}
+          </Anchor>
+        </ToastAction>
+        <button
+          v-if="notification.allowDismiss"
+          type="button"
+          aria-label="Dismiss — don't show this notification again"
+          class="cursor-pointer text-sm border-1 border-gray-400 px-2 py-1 rounded-md hover:bg-gray-100 focus:bg-gray-100 dark:hover:bg-gray-800 dark:focus:bg-gray-800"
+          @click="dismiss(notification)">
+          Dismiss
+        </button>
+      </div>
+      <ToastClose aria-label="Close notification" class="absolute right-3 top-3 cursor-pointer">
+        <GraphicsClose />
+      </ToastClose>
+    </ToastRoot>
+    <ToastViewport
+      :label="VIEWPORT_LABELS[position]"
+      :class="[
+        'fixed right-0 z-130 flex flex-col gap-2 w-[min(24em,calc(100vw-1.2rem))] max-w-full m-2 list-none outline-none',
+        position === 'top' ? 'top-0' : 'bottom-0'
+      ]" />
+  </ToastProvider>
+</template>
+
+<script setup lang="ts">
+import { ToastAction, ToastClose, ToastDescription, ToastProvider, ToastRoot, ToastTitle, ToastViewport } from 'reka-ui'
+import { useNotificationsStore, type NotificationPosition } from '~/stores/notifications'
+import { withReturnTo } from '~/utilities/reef-surveys'
+
+const DEFAULT_TOAST_DURATION_MS = 10_000
+const DEFAULT_TOAST_POSITION: NotificationPosition = 'top'
+
+const TOAST_POSITIONS: NotificationPosition[] = ['top', 'bottom']
+
+// Each viewport is its own labelled region, so the two need telling apart. `{hotkey}` is
+// substituted by reka with the key that jumps focus here.
+const VIEWPORT_LABELS: Record<NotificationPosition, string> = {
+  top: 'Notifications ({hotkey})',
+  bottom: 'Site announcements ({hotkey})'
+}
+
+const notificationsStore = useNotificationsStore()
+const route = useRoute()
+
+const { visibleNotifications } = storeToRefs(notificationsStore)
+const { hide, dismiss } = notificationsStore
+
+const notificationsAt = (position: NotificationPosition) =>
+  visibleNotifications.value.filter((notification) => (notification.position ?? DEFAULT_TOAST_POSITION) === position)
+
+// A position only gets a provider once it has something to show. Every mounted viewport binds
+// the same hotkey to focus itself, so two of them at once leaves whichever handles it first
+// unreachable — keeping the empty one out of the DOM confines that to the rare moment when
+// both corners are genuinely occupied, and avoids a hotkey that lands on nothing.
+const activePositions = computed(() => TOAST_POSITIONS.filter((position) => notificationsAt(position).length > 0))
+
+const normaliseUrl = (url: string) => {
+  try {
+    const newUrl = new URL(url)
+    if (newUrl.host === location.host) {
+      const relativePath = `${newUrl.pathname}${newUrl.search}${newUrl.hash}`
+      console.log('[notification-url] changed ', url, ' to ', relativePath)
+      return relativePath
+    }
+  } catch (e) {
+    console.error(`[notification-url] can't parse ${url}`, e)
+    return url
+  }
+  console.error(`[notification-url] offsite link to ${url} not making relative url`)
+  return url
+}
+
+const normalisedUrls = computed(
+  () =>
+    new Map(
+      visibleNotifications.value.flatMap(({ id, url, appendReturnTo }) =>
+        url ? [[id, normaliseUrl(appendReturnTo ? withReturnTo(url, route.fullPath) : url)] as const] : []
+      )
+    )
+)
+</script>
