@@ -1,1 +1,5 @@
-.vscode
+.vscodeeal7.db
+eal7.json
+__pycache__/
+*.pyc
+~/.qxd-build/
