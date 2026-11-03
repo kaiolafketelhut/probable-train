@@ -1,0 +1,14 @@
+{
+  "kdp": "KDPMember:KL5UQ4f48673352",
+  "BOA": "application/vnd.x-mosfetq-dos-image",
+  "IANA": 1460172,
+  "PORT": 8038,
+  "FLOP_QUADRUPLE": "4+16+64=84",
+  "total_flops_quadruple": 84,
+  "matrix": [4, 64, 16],
+  "conclusion": "success",
+  "build": "97db8a3",
+  "previous_failure": "c0739ed",
+  "status": "queued -> success",
+  "timestamp": "2026-11-03T21:31:21Z"
+}
